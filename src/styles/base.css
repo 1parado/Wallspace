@@ -1,0 +1,214 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+html {
+  /* 窗口 acrylic 之上叠一层近实色底：玻璃生效时有微妙透出，未生效时近似纯色 */
+  background: var(--window-tint);
+}
+
+body {
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-1);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+::selection {
+  background: var(--selection);
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+img {
+  display: block;
+}
+
+/* macOS 风细滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+/* 通用控件基元 */
+.glass {
+  background: var(--glass-strong);
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+  border: 1px solid var(--stroke);
+}
+
+.text-field {
+  width: 100%;
+  background: var(--fill-subtle);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-btn);
+  padding: 9px 12px;
+  color: var(--text-1);
+  outline: none;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.text-field::placeholder {
+  color: var(--text-3);
+}
+
+.text-field:focus {
+  border-color: var(--stroke-strong);
+  background: var(--fill-hover);
+}
+
+/* 主按钮 */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 100px;
+  padding: 9px 20px;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    opacity var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.btn-primary:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 次级按钮 */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 100px;
+  padding: 8px 16px;
+  border: 1px solid var(--stroke);
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 视图切换过渡 */
+.view-enter-active {
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.view-leave-active {
+  transition: opacity 160ms var(--ease-out);
+}
+
+.view-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.view-leave-to {
+  opacity: 0;
+}
+
+/* 全屏 Overlay 过渡（Preview / Settings） */
+.overlay-enter-active {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.overlay-leave-active {
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.overlay-enter-active .overlay-spring {
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    opacity var(--dur-3) var(--ease-out);
+}
+
+.overlay-leave-active .overlay-spring {
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.overlay-enter-from,
+.overlay-leave-to {
+  opacity: 0;
+}
+
+.overlay-enter-from .overlay-spring {
+  transform: scale(0.94);
+  opacity: 0;
+}

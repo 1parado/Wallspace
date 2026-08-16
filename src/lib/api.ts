@@ -1,0 +1,90 @@
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import type { ImportReport, MonitorInfo, Settings, WallpaperItem } from '../types';
+
+export function assetUrl(path: string): string {
+  return convertFileSrc(path);
+}
+
+export async function getLibrary(): Promise<WallpaperItem[]> {
+  return invoke('get_library');
+}
+
+export async function importLocalFiles(
+  paths: string[],
+  category: string
+): Promise<ImportReport> {
+  return invoke('import_local_files', { paths, category });
+}
+
+export async function importFromUrl(
+  url: string,
+  category: string
+): Promise<WallpaperItem> {
+  return invoke('import_from_url', { url, category });
+}
+
+export async function generateWallpaper(
+  prompt: string,
+  size: string,
+  category: string
+): Promise<WallpaperItem> {
+  return invoke('generate_wallpaper', { prompt, size, category });
+}
+
+export interface GrokImagineStatus {
+  total: number;
+  available: number;
+}
+
+/** Grok（grok.com 账号池）直连生图，协议与 grok_switch ImagineEngine 一致 */
+export async function grokImagine(
+  prompt: string,
+  model: string,
+  aspectRatio: string,
+  category: string
+): Promise<WallpaperItem> {
+  return invoke('grok_imagine', { prompt, model, aspectRatio, category });
+}
+
+export async function grokImagineStatus(): Promise<GrokImagineStatus> {
+  return invoke('grok_imagine_status');
+}
+
+export async function updateItem(item: WallpaperItem): Promise<WallpaperItem> {
+  return invoke('update_item', { item });
+}
+
+export async function deleteItem(id: string): Promise<void> {
+  return invoke('delete_item', { id });
+}
+
+/** display 为 null 表示应用到所有显示器 */
+export async function applyWallpaper(
+  id: string,
+  display: string | null
+): Promise<void> {
+  return invoke('apply_wallpaper', { id, display });
+}
+
+export async function listMonitors(): Promise<MonitorInfo[]> {
+  return invoke('list_monitors');
+}
+
+export async function getSettings(): Promise<Settings> {
+  return invoke('get_settings');
+}
+
+export async function saveSettings(settings: Settings): Promise<void> {
+  return invoke('save_settings', { settings });
+}
+
+export async function testConnection(
+  baseUrl: string,
+  apiKey: string
+): Promise<string[]> {
+  return invoke('test_connection', { baseUrl, apiKey });
+}
+
+export async function revealItem(path: string): Promise<void> {
+  return invoke('reveal_item', { path });
+}

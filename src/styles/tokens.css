@@ -1,0 +1,99 @@
+:root {
+  /* 背景层次（非常深的黑灰，禁纯黑大面） */
+  --bg: #0b0b0d;
+  --bg-2: #101012;
+  --bg-3: #151517;
+
+  /* 三级文字 */
+  --text-1: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.58);
+  --text-3: rgba(255, 255, 255, 0.35);
+
+  /* 描边 / 填充 */
+  --stroke: rgba(255, 255, 255, 0.08);
+  --stroke-strong: rgba(255, 255, 255, 0.14);
+  --fill-hover: rgba(255, 255, 255, 0.06);
+  --fill-active: rgba(255, 255, 255, 0.1);
+  --fill-subtle: rgba(255, 255, 255, 0.04);
+
+  /* 玻璃层次 */
+  --glass-side: rgba(16, 16, 18, 0.55);
+  --glass-top: rgba(16, 16, 18, 0.4);
+  --glass-strong: rgba(21, 21, 23, 0.72);
+  --veil: rgba(5, 5, 7, 0.55);
+  --window-tint: rgba(11, 11, 13, 0.96);
+  --glow: rgba(255, 255, 255, 0.035);
+  --bg-stage: #0a0a0c;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+  --selection: rgba(255, 255, 255, 0.18);
+
+  /* 主按钮（深色主题：白底黑字） */
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-bg-hover: #ffffff;
+  --btn-primary-fg: #0b0b0d;
+
+  /* 骨架微光 */
+  --skeleton-a: rgba(255, 255, 255, 0.03);
+  --skeleton-b: rgba(255, 255, 255, 0.07);
+
+  /* 克制的 accent：仅收藏 / 应用 / 选中 */
+  --accent-heart: #ff5a6e;
+  --accent-danger: #e5484d;
+
+  /* 圆角 */
+  --radius-card: 16px;
+  --radius-btn: 10px;
+  --radius-overlay: 20px;
+
+  /* 动效：ease-out / 近似 spring，200~450ms */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 200ms;
+  --dur-2: 300ms;
+  --dur-3: 450ms;
+
+  /* 布局 */
+  --sidebar-w: 220px;
+  --toolbar-h: 56px;
+
+  /* 字体 */
+  --font:
+    'Inter Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', 'Microsoft YaHei UI',
+    'Microsoft YaHei', sans-serif;
+}
+
+/* 浅色主题（macOS Light） */
+:root[data-theme='light'] {
+  --bg: #f2f2f5;
+  --bg-2: #f7f7f9;
+  --bg-3: #ebebef;
+
+  --text-1: rgba(0, 0, 0, 0.88);
+  --text-2: rgba(0, 0, 0, 0.55);
+  --text-3: rgba(0, 0, 0, 0.38);
+
+  --stroke: rgba(0, 0, 0, 0.09);
+  --stroke-strong: rgba(0, 0, 0, 0.16);
+  --fill-hover: rgba(0, 0, 0, 0.05);
+  --fill-active: rgba(0, 0, 0, 0.09);
+  --fill-subtle: rgba(0, 0, 0, 0.04);
+
+  --glass-side: rgba(246, 246, 248, 0.6);
+  --glass-top: rgba(248, 248, 250, 0.5);
+  --glass-strong: rgba(251, 251, 253, 0.8);
+  --veil: rgba(238, 238, 243, 0.6);
+  --window-tint: rgba(242, 242, 245, 0.97);
+  --glow: rgba(0, 0, 0, 0.025);
+  --bg-stage: #e8e8ec;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.16);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.28);
+  --selection: rgba(0, 0, 0, 0.12);
+
+  --btn-primary-bg: #1d1d1f;
+  --btn-primary-bg-hover: #000000;
+  --btn-primary-fg: #ffffff;
+
+  --skeleton-a: rgba(0, 0, 0, 0.045);
+  --skeleton-b: rgba(0, 0, 0, 0.085);
+}

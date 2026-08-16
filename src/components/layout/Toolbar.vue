@@ -1,0 +1,413 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useUiStore } from '../../stores/ui';
+import { useSettingsStore } from '../../stores/settings';
+import { useI18n } from '../../lib/i18n';
+import Icon from '../common/Icon.vue';
+
+const ui = useUiStore();
+const settings = useSettingsStore();
+const { t } = useI18n();
+const win = getCurrentWindow();
+
+const title = computed(() => {
+  if (ui.view === 'wallpapers' && ui.categoryFilter) {
+    return t(`cat.${ui.categoryFilter.toLowerCase()}`);
+  }
+  const map: Record<string, string> = {
+    discover: 'nav.discover',
+    create: 'nav.create',
+    wallpapers: 'nav.wallpapers',
+    favorites: 'nav.favorites',
+    downloads: 'nav.downloads',
+    imports: 'nav.imports',
+    recent: 'nav.recent',
+  };
+  return t(map[ui.view] ?? 'nav.discover');
+});
+
+const subtitle = computed(() => {
+  if (ui.view === 'wallpapers') {
+    if (ui.search) return t('toolbar.searchResult', { q: ui.search });
+    if (ui.categoryFilter) return t('toolbar.category');
+    return t('toolbar.allWallpapers');
+  }
+  if (ui.view === 'discover') return t('toolbar.curated');
+  if (ui.view === 'create') return t('toolbar.generate');
+  if (ui.view === 'downloads') return t('toolbar.offlineReady');
+  if (ui.view === 'favorites') return t('toolbar.favoritesSub');
+  if (ui.view === 'recent') return t('toolbar.recentSub');
+  return '';
+});
+
+const searchEl = ref<HTMLInputElement | null>(null);
+
+function onGlobalKey(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    ui.view = 'wallpapers';
+    ui.categoryFilter = null;
+    nextTick(() => searchEl.value?.focus());
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+    e.preventDefault();
+    settings.sidebarHidden = !settings.sidebarHidden;
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onGlobalKey));
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKey));
+
+const displayOpen = ref(false);
+
+const displayLabel = computed(() => {
+  if (!ui.selectedDisplay) return t('toolbar.allDisplays');
+  const m = ui.monitors.find((x) => x.id === ui.selectedDisplay);
+  return m?.name ?? t('toolbar.display');
+});
+
+function pickDisplay(id: string | null) {
+  ui.selectedDisplay = id;
+  displayOpen.value = false;
+}
+
+const maximized = ref(false);
+async function syncMaximized() {
+  maximized.value = await win.isMaximized();
+}
+onMounted(() => {
+  syncMaximized();
+  window.addEventListener('resize', syncMaximized);
+});
+onUnmounted(() => window.removeEventListener('resize', syncMaximized));
+
+function toggleTheme() {
+  settings.setTheme(settings.resolvedDark ? 'light' : 'dark');
+}
+</script>
+
+<template>
+  <header class="toolbar">
+    <div class="left" data-tauri-drag-region>
+      <button
+        class="icon-only"
+        :title="t('toolbar.toggleSidebar') + ' (Ctrl+B)'"
+        @click="settings.sidebarHidden = !settings.sidebarHidden"
+      >
+        <Icon name="panel-left" :size="16" />
+      </button>
+      <h1 class="title" data-tauri-drag-region>{{ title }}</h1>
+      <span class="subtitle" data-tauri-drag-region>{{ subtitle }}</span>
+    </div>
+
+    <div class="center">
+      <div class="search">
+        <Icon name="search" :size="15" />
+        <input
+          ref="searchEl"
+          v-model="ui.search"
+          :placeholder="t('toolbar.search')"
+          spellcheck="false"
+        />
+        <kbd>Ctrl K</kbd>
+      </div>
+    </div>
+
+    <div class="right">
+      <button
+        class="icon-only"
+        :title="t('toolbar.toggleTheme')"
+        @click="toggleTheme"
+      >
+        <Icon :name="settings.resolvedDark ? 'sun' : 'moon'" :size="16" />
+      </button>
+
+      <div class="display-picker">
+        <button class="pill" @click="displayOpen = !displayOpen">
+          <Icon name="monitor" :size="15" />
+          <span class="pill-label">{{ displayLabel }}</span>
+          <Icon name="chevron-down" :size="13" />
+        </button>
+        <Transition name="menu">
+          <div v-if="displayOpen" class="menu glass">
+            <button class="menu-item" :class="{ active: !ui.selectedDisplay }" @click="pickDisplay(null)">
+              <span class="radio" />
+              <span>{{ t('toolbar.allDisplays') }}</span>
+            </button>
+            <button
+              v-for="m in ui.monitors"
+              :key="m.id"
+              class="menu-item"
+              :class="{ active: ui.selectedDisplay === m.id }"
+              @click="pickDisplay(m.id)"
+            >
+              <span class="radio" />
+              <span class="menu-name">{{ m.name }}</span>
+              <span class="menu-meta">{{ m.width }}×{{ m.height }}</span>
+            </button>
+          </div>
+        </Transition>
+      </div>
+
+      <button class="icon-only" :title="t('toolbar.settings')" @click="ui.settingsOpen = true">
+        <Icon name="settings" :size="17" />
+      </button>
+
+      <div class="window-controls">
+        <button class="wc" :title="t('toolbar.minimize')" @click="win.minimize()">
+          <Icon name="minus" :size="14" />
+        </button>
+        <button class="wc" :title="maximized ? t('toolbar.restore') : t('toolbar.maximize')" @click="win.toggleMaximize()">
+          <Icon :name="maximized ? 'restore' : 'square'" :size="12" />
+        </button>
+        <button class="wc close" :title="t('toolbar.close')" @click="win.close()">
+          <Icon name="x" :size="14" />
+        </button>
+      </div>
+    </div>
+  </header>
+</template>
+
+<style scoped>
+.toolbar {
+  height: var(--toolbar-h);
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 8px 0 10px;
+  background: var(--glass-top);
+  border-bottom: 1px solid var(--stroke);
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  -webkit-app-region: drag;
+}
+
+.left .icon-only {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: 12.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--fill-subtle);
+  border: 1px solid var(--stroke);
+  color: var(--text-3);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.search:focus-within {
+  border-color: var(--stroke-strong);
+  background: var(--fill-hover);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.search input::placeholder {
+  color: var(--text-3);
+}
+
+.search kbd {
+  font-family: var(--font);
+  font-size: 10.5px;
+  color: var(--text-3);
+  border: 1px solid var(--stroke);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-left: 16px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  border: 1px solid var(--stroke);
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
+}
+
+.pill:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+.pill-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.display-picker {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 230px;
+  padding: 6px;
+  border-radius: 14px;
+  z-index: 100;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.menu-item:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.menu-item.active {
+  color: var(--text-1);
+}
+
+.menu-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.menu-meta {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.radio {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-3);
+  flex-shrink: 0;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.menu-item.active .radio {
+  background: var(--text-1);
+  border-color: var(--text-1);
+}
+
+.menu-enter-active,
+.menu-leave-active {
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+}
+
+.icon-only {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--text-2);
+  transition:
+    background var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.icon-only:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+.window-controls {
+  display: flex;
+  margin-left: 4px;
+}
+
+.wc {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 34px;
+  color: var(--text-3);
+  transition:
+    background var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.wc:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+.wc.close:hover {
+  color: #fff;
+  background: var(--accent-danger);
+}
+</style>
