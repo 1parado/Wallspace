@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wallspace — AI 桌面壁纸应用</title>
+  <meta name="description" content="Wallspace 是一款 Windows 下的 AI 生图桌面壁纸应用，生图即壁纸，支持多显示器、画廊管理、深色浅色主题。" />
+  <link rel="icon" href="assets/icon.png" />
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --surface: #ffffff;
+      --text: #11131a;
+      --text-secondary: #5d6470;
+      --brand: #2563eb;
+      --brand-600: #1d4ed8;
+      --brand-soft: #eff6ff;
+      --border: #e6e8ee;
+      --shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+      --radius: 20px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1120px, 92vw);
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(14px);
+      background: rgba(247, 248, 251, 0.82);
+      border-bottom: 1px solid rgba(230, 232, 238, 0.6);
+    }
+
+    nav {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-600);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.34);
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: var(--brand-soft);
+      border-color: #bfdbfe;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 96px 0 64px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      line-height: 1.1;
+      margin: 0 0 20px;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      color: var(--text-secondary);
+      font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+      max-width: 640px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Screenshots */
+    .screenshots {
+      padding: 72px 0;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 44px;
+    }
+
+    .section-title h2 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      margin: 0 0 10px;
+    }
+
+    .section-title p {
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+
+    .gallery-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      cursor: zoom-in;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .gallery-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 26px 70px rgba(15, 23, 42, 0.12);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gallery-item.wide {
+      grid-column: span 8;
+    }
+
+    .gallery-item.tall {
+      grid-column: span 4;
+      grid-row: span 2;
+    }
+
+    .gallery-item.normal {
+      grid-column: span 6;
+    }
+
+    @media (max-width: 860px) {
+      .gallery-item.wide,
+      .gallery-item.tall,
+      .gallery-item.normal {
+        grid-column: span 12;
+        grid-row: auto;
+      }
+    }
+
+    /* Features */
+    .features {
+      padding: 72px 0;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 26px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      display: grid;
+      place-items: center;
+      font-size: 1.3rem;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .feature-card p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Download */
+    .download {
+      padding: 80px 0;
+    }
+
+    .download-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 56px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 44px;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      .download-card {
+        grid-template-columns: 1fr;
+        padding: 36px 28px;
+      }
+    }
+
+    .download-card h2 {
+      margin: 0 0 14px;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+    }
+
+    .download-card p {
+      color: #94a3b8;
+      margin: 0 0 26px;
+    }
+
+    .download-meta {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .download-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .release-box {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+    }
+
+    .release-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .release-status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 1.6s infinite;
+    }
+
+    .release-status .dot.loading {
+      background: #f59e0b;
+      animation: spin 1s linear infinite;
+    }
+
+    .release-status .dot.missing {
+      background: #ef4444;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .asset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .asset-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      transition: background 0.15s ease;
+    }
+
+    .asset-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .asset-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .asset-size {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+
+    .asset-item .btn {
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .empty-release {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .empty-release a {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    /* GitHub */
+    .github {
+      padding: 64px 0;
+      text-align: center;
+    }
+
+    .github-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 20px;
+      padding: 22px 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .github-card svg {
+      width: 44px;
+      height: 44px;
+      fill: #111;
+    }
+
+    .github-card p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .github-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 1.05rem;
+      margin-bottom: 2px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 90vh;
+      border-radius: 12px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 1.6rem;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="container">
+      <a class="brand" href="#">
+        <img src="assets/icon.png" alt="Wallspace" />
+        <span>Wallspace</span>
+      </a>
+      <div class="nav-links">
+        <a href="#showcase">界面</a>
+        <a href="#features">功能</a>
+        <a href="#download">下载</a>
+        <a href="https://github.com/1parado/Wallspace" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <a class="btn btn-primary" href="#download">立即下载</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+
+      <h1>生图即壁纸<br />Wallspace for Windows</h1>
+      <p>一款轻量、现代的 AI 桌面壁纸应用。输入提示词生成专属壁纸，一键应用到显示器，支持画廊管理、多显示器、深色浅色主题。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          免费下载
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/1parado/Wallspace" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          查看源码
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="screenshots" id="showcase">
+    <div class="container">
+      <div class="section-title">
+        <h2>应用预览</h2>
+        <p>简洁现代的界面，从发现到设为壁纸只需几步。</p>
+      </div>
+      <div class="gallery">
+        <div class="gallery-item wide" data-src="assets/pic1.png">
+          <img src="assets/pic1.png" alt="Wallspace 主界面" />
+        </div>
+        <!--<div class="gallery-item tall" data-src="assets/UI_1.png">
+          <img src="assets/UI_1.png" alt="Wallspace 精选壁纸" />
+        </div>-->
+        <div class="gallery-item normal" data-src="assets/pic2.png">
+          <img src="assets/pic2.png" alt="壁纸详情预览" />
+        </div>
+        <div class="gallery-item normal" data-src="assets/pic3.png">
+          <img src="assets/pic3.png" alt="应用到桌面效果" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>核心功能</h2>
+        <p>围绕「生成 → 管理 → 应用」打造的完整壁纸工作流。</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">✨</div>
+          <h3>AI 生图</h3>
+          <p>支持 OpenAI 兼容接口与 Grok 直连，b64 / URL 双回退，配置 API 即可一键生成。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖥️</div>
+          <h3>多显示器支持</h3>
+          <p>按目标显示器分辨率智能裁剪，可为每个屏幕单独设置壁纸，或一键应用到全部。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼️</div>
+          <h3>画廊管理</h3>
+          <p>生成、链接下载、本地导入统一入库；支持重命名、分类、收藏、删除、Ctrl+K 搜索。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌓</div>
+          <h3>深色 / 浅色主题</h3>
+          <p>跟随系统或手动切换，窗口 Acrylic 底色随主题联动，沉浸感更佳。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📥</div>
+          <h3>本地导入与链接下载</h3>
+          <p>支持文件选择器、全窗口拖放导入，或粘贴图片直链下载入库，离线可用。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⌨️</div>
+          <h3>快捷键</h3>
+          <p>Ctrl+K 搜索、Ctrl+B 侧栏、Esc 关闭预览、F 收藏，操作更顺手。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="container">
+      <div class="download-card">
+        <div>
+          <h2>下载 Wallspace</h2>
+          <p>下方列表会自动从 GitHub Releases 拉取最新版本。若暂无 Release，可下载源码自行构建。</p>
+          <div class="download-meta">
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Windows 10 / 11
+            </span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              Tauri 2 + Vue 3
+            </span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              开源免费
+            </span>
+          </div>
+        </div>
+        <div class="release-box">
+          <div class="release-status" id="release-status">
+            <span class="dot loading"></span>
+            <span>正在检查最新 Release…</span>
+          </div>
+          <div class="asset-list" id="asset-list">
+            <!-- JS 填充 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="github">
+    <div class="container">
+      <a class="github-card" href="https://github.com/1parado/Wallspace" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        <div>
+          <strong>1parado / Wallspace</strong>
+          <p>在 GitHub 上 Star、提 Issue 或参与贡献</p>
+        </div>
+        <span class="btn btn-ghost">打开仓库 →</span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      © 2026 Wallspace · 由 1parado 开源维护
+    </div>
+  </footer>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" aria-label="关闭">×</button>
+    <img src="" alt="" id="lightbox-img" />
+  </div>
+
+  <script>
+    const OWNER = '1parado';
+    const REPO = 'Wallspace';
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let i = 0;
+      while (bytes >= 1024 && i < units.length - 1) {
+        bytes /= 1024;
+        i++;
+      }
+      return `${bytes.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    async function loadRelease() {
+      const statusEl = document.getElementById('release-status');
+      const listEl = document.getElementById('asset-list');
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`);
+        if (res.status === 404) {
+          throw new Error('NO_RELEASE');
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        statusEl.innerHTML = `
+          <span class="dot"></span>
+          <span>最新版本：${data.tag_name}</span>
+        `;
+
+        if (!data.assets || data.assets.length === 0) {
+          listEl.innerHTML = `
+            <div class="empty-release">
+              该版本暂无二进制资产。你可以
+              <a href="${data.html_url}" target="_blank" rel="noopener">查看 Release 页面</a>
+              或下载源码自行构建。
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = data.assets.map(asset => `
+          <div class="asset-item">
+            <div style="min-width:0">
+              <div class="asset-name" title="${asset.name}">${asset.name}</div>
+              <div class="asset-size">${formatBytes(asset.size)} · ${asset.download_count} 次下载</div>
+            </div>
+            <a class="btn btn-primary" href="${asset.browser_download_url}" download target="_blank" rel="noopener">下载</a>
+          </div>
+        `).join('');
+      } catch (err) {
+        if (err.message === 'NO_RELEASE') {
+          statusEl.innerHTML = `
+            <span class="dot missing"></span>
+            <span>暂无 GitHub Release</span>
+          `;
+          listEl.innerHTML = `
+            <div class="empty-release">
+              目前还没有正式发布版。你可以：<br/>
+              1. 关注 <a href="https://github.com/${OWNER}/${REPO}/releases" target="_blank" rel="noopener">Releases 页面</a> 等待更新；<br/>
+              2. 下载 <a href="https://github.com/${OWNER}/${REPO}/archive/refs/tags/v0.1.0.zip" target="_blank" rel="noopener">v0.1.0 源码 ZIP</a>
+              或 <a href="https://github.com/${OWNER}/${REPO}/archive/refs/tags/v0.1.0.tar.gz" target="_blank" rel="noopener">TAR</a> 自行构建。
+            </div>
+          `;
+        } else {
+          statusEl.innerHTML = `
+            <span class="dot missing"></span>
+            <span>检查失败</span>
+          `;
+          listEl.innerHTML = `
+            <div class="empty-release">
+              无法连接 GitHub API，请直接前往
+              <a href="https://github.com/${OWNER}/${REPO}/releases" target="_blank" rel="noopener">Releases 页面</a>
+              下载。
+            </div>
+          `;
+        }
+      }
+    }
+
+    // 灯箱
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxClose = document.querySelector('.lightbox-close');
+
+    document.querySelectorAll('.gallery-item').forEach(item => {
+      item.addEventListener('click', () => {
+        lightboxImg.src = item.dataset.src;
+        lightbox.classList.add('active');
+      });
+    });
+
+    lightboxClose.addEventListener('click', () => lightbox.classList.remove('active'));
+    lightbox.addEventListener('click', e => {
+      if (e.target === lightbox) lightbox.classList.remove('active');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') lightbox.classList.remove('active');
+    });
+
+    loadRelease();
+  </script>
+</body>
+</html>
