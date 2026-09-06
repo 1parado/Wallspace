@@ -11,22 +11,6 @@ const settings = useSettingsStore();
 const { t } = useI18n();
 const win = getCurrentWindow();
 
-const title = computed(() => {
-  if (ui.view === 'wallpapers' && ui.categoryFilter) {
-    return t(`cat.${ui.categoryFilter.toLowerCase()}`);
-  }
-  const map: Record<string, string> = {
-    discover: 'nav.discover',
-    create: 'nav.create',
-    wallpapers: 'nav.wallpapers',
-    favorites: 'nav.favorites',
-    downloads: 'nav.downloads',
-    imports: 'nav.imports',
-    recent: 'nav.recent',
-  };
-  return t(map[ui.view] ?? 'nav.discover');
-});
-
 const subtitle = computed(() => {
   if (ui.view === 'wallpapers') {
     if (ui.search) return t('toolbar.searchResult', { q: ui.search });
@@ -96,7 +80,6 @@ function toggleTheme() {
       >
         <Icon name="panel-left" :size="16" />
       </button>
-      <h1 class="title" data-tauri-drag-region>{{ title }}</h1>
       <span class="subtitle" data-tauri-drag-region>{{ subtitle }}</span>
     </div>
 
@@ -152,24 +135,25 @@ function toggleTheme() {
       <button class="icon-only" :title="t('toolbar.settings')" @click="ui.settingsOpen = true">
         <Icon name="settings" :size="17" />
       </button>
+    </div>
 
-      <div class="window-controls">
-        <button class="wc" :title="t('toolbar.minimize')" @click="win.minimize()">
-          <Icon name="minus" :size="14" />
-        </button>
-        <button class="wc" :title="maximized ? t('toolbar.restore') : t('toolbar.maximize')" @click="win.toggleMaximize()">
-          <Icon :name="maximized ? 'restore' : 'square'" :size="12" />
-        </button>
-        <button class="wc close" :title="t('toolbar.close')" @click="win.close()">
-          <Icon name="x" :size="14" />
-        </button>
-      </div>
+    <div class="window-controls" data-tauri-drag-region="false">
+      <button class="wc" :title="t('toolbar.minimize')" @click="win.minimize()">
+        <Icon name="minus" :size="14" />
+      </button>
+      <button class="wc" :title="maximized ? t('toolbar.restore') : t('toolbar.maximize')" @click="win.toggleMaximize()">
+        <Icon :name="maximized ? 'restore' : 'square'" :size="12" />
+      </button>
+      <button class="wc close" :title="t('toolbar.close')" @click="win.close()">
+        <Icon name="x" :size="14" />
+      </button>
     </div>
   </header>
 </template>
 
 <style scoped>
 .toolbar {
+  position: relative;
   height: var(--toolbar-h);
   flex-shrink: 0;
   display: grid;
@@ -195,35 +179,28 @@ function toggleTheme() {
   flex-shrink: 0;
 }
 
-.title {
-  font-size: 15px;
-  font-weight: 640;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
 .subtitle {
-  font-size: 12.5px;
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 .center {
   display: flex;
   justify-content: center;
+  position: absolute;
+  right: 232px;
 }
 
 .search {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 260px;
-  padding: 6px 12px;
-  border-radius: 100px;
-  background: var(--fill-subtle);
-  border: 1px solid var(--stroke);
+  width: 38px;
+  height: 34px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  overflow: hidden;
   color: var(--text-3);
   transition:
     border-color var(--dur-1) var(--ease-out),
@@ -231,8 +208,15 @@ function toggleTheme() {
 }
 
 .search:focus-within {
+  width: 220px;
   border-color: var(--stroke-strong);
   background: var(--fill-hover);
+}
+
+.search:hover {
+  width: 220px;
+  border-color: var(--stroke);
+  background: var(--fill-subtle);
 }
 
 .search input {
@@ -241,8 +225,14 @@ function toggleTheme() {
   background: none;
   border: none;
   outline: none;
+  width: 0;
   font-size: 13px;
   color: var(--text-1);
+}
+
+.search:hover input,
+.search:focus-within input {
+  width: auto;
 }
 
 .search input::placeholder {
@@ -253,25 +243,34 @@ function toggleTheme() {
   font-family: var(--font);
   font-size: 10.5px;
   color: var(--text-3);
+  display: none;
   border: 1px solid var(--stroke);
   border-radius: 5px;
   padding: 1px 5px;
+}
+
+.search:hover kbd,
+.search:focus-within kbd {
+  display: inline-block;
 }
 
 .right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding-left: 16px;
+  gap: 2px;
+  padding: 0 122px 0 16px;
 }
 
 .pill {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
-  border-radius: 100px;
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 10px;
   font-size: 12.5px;
   color: var(--text-2);
   border: 1px solid var(--stroke);
@@ -286,10 +285,11 @@ function toggleTheme() {
 }
 
 .pill-label {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
+}
+
+.pill > :last-child {
+  display: none;
 }
 
 .display-picker {
@@ -386,8 +386,12 @@ function toggleTheme() {
 }
 
 .window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
-  margin-left: 4px;
+  height: 100%;
+  -webkit-app-region: no-drag;
 }
 
 .wc {
@@ -409,5 +413,19 @@ function toggleTheme() {
 .wc.close:hover {
   color: #fff;
   background: var(--accent-danger);
+}
+
+@media (max-width: 760px) {
+  .center {
+    right: 126px;
+  }
+
+  .window-controls {
+    display: flex;
+  }
+
+  .right {
+    padding-right: 116px;
+  }
 }
 </style>

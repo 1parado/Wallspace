@@ -74,30 +74,37 @@ const hasLibrary = computed(() => lib.items.length > 0);
 .discover {
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  gap: 32px;
 }
 
 .hero {
-  padding: 56px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 72px 8px 18px;
+  text-align: center;
 }
 
 .hero-title {
-  font-size: clamp(32px, 3.4vw, 46px);
-  font-weight: 680;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
 }
 
 .hero-sub {
-  margin-top: 10px;
-  font-size: 16px;
+  margin-top: 9px;
+  font-size: 14px;
   color: var(--text-2);
 }
 
 .hero-actions {
   display: flex;
+  justify-content: center;
   gap: 12px;
-  margin-top: 26px;
+  margin-top: 22px;
 }
 
 .section {
@@ -113,14 +120,13 @@ const hasLibrary = computed(() => lib.items.length > 0);
 }
 
 .section-head h2 {
-  font-size: 22px;
-  font-weight: 620;
+  font-size: 18px;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .hint {
-  font-size: 12.5px;
-  color: var(--text-3);
+  display: none;
 }
 
 .more {
@@ -141,7 +147,7 @@ const hasLibrary = computed(() => lib.items.length > 0);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(420px, 68%);
-  gap: 18px;
+  gap: 14px;
   overflow-x: auto;
   padding-bottom: 8px;
   scroll-snap-type: x mandatory;

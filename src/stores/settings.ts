@@ -17,7 +17,8 @@ export const useSettingsStore = defineStore('settings', {
     fillMode: 'fill',
     defaultSize: '1536x1024',
     locale: 'zh-CN',
-    theme: 'system',
+    // 与 mini-vedio 保持清晰、低干扰的浅色默认；用户仍可切换深色。
+    theme: 'light',
     sidebarHidden: false,
   }),
   getters: {

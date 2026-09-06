@@ -22,6 +22,14 @@ const PERSONAL = [
   { id: 'recent', labelKey: 'nav.recent', icon: 'clock' },
 ] as const;
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Nature: 'globe',
+  Space: 'sparkles',
+  Abstract: 'compass',
+  Cinematic: 'play',
+  Minimal: 'image',
+};
+
 function goCategory(cat: string) {
   ui.view = 'wallpapers';
   ui.categoryFilter = cat;
@@ -53,10 +61,12 @@ async function importOwn() {
         :key="n.id"
         class="nav-item"
         :class="{ active: ui.view === n.id }"
+        :title="t(n.labelKey)"
+        :aria-label="t(n.labelKey)"
         @click="ui.goto(n.id)"
       >
         <Icon :name="n.icon" :size="17" />
-        <span>{{ t(n.labelKey) }}</span>
+        <span class="nav-text">{{ t(n.labelKey) }}</span>
         <span v-if="n.id === 'favorites' && lib.favorites.length" class="count">
           {{ lib.favorites.length }}
         </span>
@@ -70,9 +80,12 @@ async function importOwn() {
         :key="c"
         class="nav-item sub"
         :class="{ active: ui.view === 'wallpapers' && ui.categoryFilter === c }"
+        :title="t(`cat.${c.toLowerCase()}`)"
+        :aria-label="t(`cat.${c.toLowerCase()}`)"
         @click="goCategory(c)"
       >
-        <span>{{ t(`cat.${c.toLowerCase()}`) }}</span>
+        <Icon :name="CATEGORY_ICONS[c] ?? 'image'" :size="16" />
+        <span class="nav-text">{{ t(`cat.${c.toLowerCase()}`) }}</span>
       </button>
     </div>
 
@@ -83,18 +96,20 @@ async function importOwn() {
         :key="p.id"
         class="nav-item sub"
         :class="{ active: ui.view === p.id }"
+        :title="t(p.labelKey)"
+        :aria-label="t(p.labelKey)"
         @click="ui.goto(p.id)"
       >
         <Icon :name="p.icon" :size="16" />
-        <span>{{ t(p.labelKey) }}</span>
+        <span class="nav-text">{{ t(p.labelKey) }}</span>
       </button>
     </div>
 
     <div class="spacer" />
 
-    <button class="import-cta" @click="importOwn">
+    <button class="import-cta" :title="t('nav.importOwn')" :aria-label="t('nav.importOwn')" @click="importOwn">
       <Icon name="upload" :size="15" />
-      <span>{{ t('nav.importOwn') }}</span>
+      <span class="nav-text">{{ t('nav.importOwn') }}</span>
     </button>
     <p class="footnote">{{ t('nav.footnote') }}</p>
   </aside>
@@ -106,18 +121,19 @@ async function importOwn() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px 12px 14px;
+  padding: 14px 8px 12px;
   background: var(--glass-side);
   border-right: 1px solid var(--stroke);
-  backdrop-filter: blur(40px) saturate(1.25);
-  -webkit-backdrop-filter: blur(40px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
 }
 
 .brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 4px 10px 18px;
+  padding: 4px 0 20px;
 }
 
 .brand-mark {
@@ -132,9 +148,7 @@ async function importOwn() {
 }
 
 .brand-name {
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  display: none;
 }
 
 .nav {
@@ -144,13 +158,15 @@ async function importOwn() {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 9px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 9px;
-  font-size: 13.5px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 480;
   color: var(--text-2);
   transition:
@@ -169,13 +185,19 @@ async function importOwn() {
 }
 
 .count {
-  margin-left: auto;
+  position: absolute;
+  margin: -18px 0 0 20px;
+  min-width: 14px;
+  text-align: center;
+  background: var(--text-1);
+  color: var(--bg);
+  border-radius: 999px;
   font-size: 11.5px;
-  color: var(--text-3);
+  font-weight: 600;
 }
 
 .section {
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .section-label {
@@ -184,11 +206,22 @@ async function importOwn() {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
-  padding: 0 10px 6px;
+  padding: 0 0 6px;
+  text-align: center;
+  font-size: 0;
+}
+
+.section-label::before {
+  content: '';
+  display: block;
+  width: 18px;
+  height: 1px;
+  margin: 0 auto;
+  background: var(--stroke);
 }
 
 .nav-item.sub {
-  padding: 6.5px 10px;
+  padding: 8px;
   font-size: 13px;
 }
 
@@ -203,7 +236,7 @@ async function importOwn() {
   gap: 8px;
   width: 100%;
   padding: 9px 12px;
-  border-radius: 11px;
+  border-radius: 10px;
   border: 1px dashed var(--stroke-strong);
   color: var(--text-2);
   font-size: 13px;
@@ -220,9 +253,10 @@ async function importOwn() {
 }
 
 .footnote {
-  margin-top: 10px;
-  text-align: center;
-  font-size: 10.5px;
-  color: var(--text-3);
+  display: none;
+}
+
+.nav-text {
+  display: none;
 }
 </style>

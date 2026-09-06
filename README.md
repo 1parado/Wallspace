@@ -32,3 +32,11 @@ AI 生图桌面壁纸应用（Windows）· Tauri 2 + Vue 3
 ### 设为桌面壁纸
 
 ![通过 Wallspace 应用为桌面壁纸后的实际效果](pic/pic3.png)
+
+### 当前主界面
+
+![Wallspace 当前主界面 — 发现页、精选与最新壁纸画廊](pic/pic4.png)
+
+### 图片详情
+
+![Wallspace 图片详情 — 生成图片预览、提示词和设为壁纸操作](pic/pic5.png)

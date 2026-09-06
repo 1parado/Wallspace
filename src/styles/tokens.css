@@ -1,50 +1,50 @@
 :root {
-  /* 背景层次（非常深的黑灰，禁纯黑大面） */
-  --bg: #0b0b0d;
-  --bg-2: #101012;
-  --bg-3: #151517;
+  /* 参考 mini-vedio：白底 + 极浅灰层次，内容成为视觉主角 */
+  --bg: #ffffff;
+  --bg-2: #fafafa;
+  --bg-3: #f4f4f5;
 
   /* 三级文字 */
-  --text-1: rgba(255, 255, 255, 0.92);
-  --text-2: rgba(255, 255, 255, 0.58);
-  --text-3: rgba(255, 255, 255, 0.35);
+  --text-1: #111111;
+  --text-2: #666666;
+  --text-3: #9b9b9b;
 
   /* 描边 / 填充 */
-  --stroke: rgba(255, 255, 255, 0.08);
-  --stroke-strong: rgba(255, 255, 255, 0.14);
-  --fill-hover: rgba(255, 255, 255, 0.06);
-  --fill-active: rgba(255, 255, 255, 0.1);
-  --fill-subtle: rgba(255, 255, 255, 0.04);
+  --stroke: #e5e5e5;
+  --stroke-strong: #cfcfcf;
+  --fill-hover: #f7f7f7;
+  --fill-active: #eeeeef;
+  --fill-subtle: #fafafa;
 
   /* 玻璃层次 */
-  --glass-side: rgba(16, 16, 18, 0.55);
-  --glass-top: rgba(16, 16, 18, 0.4);
-  --glass-strong: rgba(21, 21, 23, 0.72);
-  --veil: rgba(5, 5, 7, 0.55);
-  --window-tint: rgba(11, 11, 13, 0.96);
-  --glow: rgba(255, 255, 255, 0.035);
-  --bg-stage: #0a0a0c;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
-  --selection: rgba(255, 255, 255, 0.18);
+  --glass-side: rgba(255, 255, 255, 0.92);
+  --glass-top: rgba(255, 255, 255, 0.96);
+  --glass-strong: rgba(255, 255, 255, 0.98);
+  --veil: rgba(255, 255, 255, 0.72);
+  --window-tint: rgba(255, 255, 255, 0.98);
+  --glow: transparent;
+  --bg-stage: #f1f1f2;
+  --scrollbar-thumb: rgba(17, 17, 17, 0.16);
+  --scrollbar-thumb-hover: rgba(17, 17, 17, 0.28);
+  --selection: rgba(37, 99, 235, 0.16);
 
   /* 主按钮（深色主题：白底黑字） */
-  --btn-primary-bg: #f5f5f7;
-  --btn-primary-bg-hover: #ffffff;
-  --btn-primary-fg: #0b0b0d;
+  --btn-primary-bg: #111111;
+  --btn-primary-bg-hover: #000000;
+  --btn-primary-fg: #ffffff;
 
   /* 骨架微光 */
-  --skeleton-a: rgba(255, 255, 255, 0.03);
-  --skeleton-b: rgba(255, 255, 255, 0.07);
+  --skeleton-a: rgba(17, 17, 17, 0.045);
+  --skeleton-b: rgba(17, 17, 17, 0.085);
 
   /* 克制的 accent：仅收藏 / 应用 / 选中 */
   --accent-heart: #ff5a6e;
   --accent-danger: #e5484d;
 
   /* 圆角 */
-  --radius-card: 16px;
-  --radius-btn: 10px;
-  --radius-overlay: 20px;
+  --radius-card: 10px;
+  --radius-btn: 9px;
+  --radius-overlay: 14px;
 
   /* 动效：ease-out / 近似 spring，200~450ms */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -53,7 +53,7 @@
   --dur-3: 450ms;
 
   /* 布局 */
-  --sidebar-w: 220px;
+  --sidebar-w: 64px;
   --toolbar-h: 56px;
 
   /* 字体 */
@@ -96,4 +96,33 @@
 
   --skeleton-a: rgba(0, 0, 0, 0.045);
   --skeleton-b: rgba(0, 0, 0, 0.085);
+}
+
+/* 深色主题仍可由设置显式启用，但不再作为默认视觉 */
+:root[data-theme='dark'] {
+  --bg: #0f0f10;
+  --bg-2: #151516;
+  --bg-3: #1b1b1d;
+  --text-1: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.58);
+  --text-3: rgba(255, 255, 255, 0.35);
+  --stroke: rgba(255, 255, 255, 0.09);
+  --stroke-strong: rgba(255, 255, 255, 0.16);
+  --fill-hover: rgba(255, 255, 255, 0.06);
+  --fill-active: rgba(255, 255, 255, 0.1);
+  --fill-subtle: rgba(255, 255, 255, 0.04);
+  --glass-side: rgba(18, 18, 20, 0.86);
+  --glass-top: rgba(18, 18, 20, 0.9);
+  --glass-strong: rgba(24, 24, 26, 0.92);
+  --veil: rgba(5, 5, 7, 0.62);
+  --window-tint: rgba(15, 15, 16, 0.98);
+  --bg-stage: #0b0b0c;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+  --selection: rgba(255, 255, 255, 0.18);
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-bg-hover: #ffffff;
+  --btn-primary-fg: #0b0b0d;
+  --skeleton-a: rgba(255, 255, 255, 0.03);
+  --skeleton-b: rgba(255, 255, 255, 0.07);
 }

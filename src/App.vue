@@ -102,13 +102,7 @@ onMounted(async () => {
 .app {
   display: flex;
   height: 100vh;
-  background:
-    radial-gradient(
-      140% 100% at 50% -10%,
-      var(--glow) 0%,
-      transparent 55%
-    ),
-    transparent;
+  background: var(--bg);
 }
 
 .sidebar-slot {
@@ -136,8 +130,14 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 28px 32px 48px;
+  padding: 28px 36px 48px;
   scrollbar-gutter: stable;
+}
+
+@media (max-width: 760px) {
+  .content {
+    padding: 22px 18px 36px;
+  }
 }
 
 .drop-veil {

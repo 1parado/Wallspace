@@ -82,13 +82,15 @@ const metaLabel = computed(
   cursor: pointer;
   background: var(--bg-3);
   border: 1px solid var(--stroke);
-  transition: transform var(--dur-2) var(--ease-out);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
 }
 
 .card:hover {
-  transform: scale(1.03);
+  transform: scale(1.012);
   z-index: 2;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 26px rgba(17, 17, 17, 0.12);
 }
 
 .thumb {
