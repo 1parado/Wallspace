@@ -12,6 +12,7 @@ mod settings;
 mod store;
 mod tray;
 mod wallpaper;
+mod wallhaven;
 
 use collections::Collection;
 use models::{CmdResult, ImportReport, MonitorInfo, Settings, WallpaperItem};
@@ -138,6 +139,23 @@ fn create_collection(name: String) -> CmdResult<Collection> {
     Ok(collections::new_collection(name))
 }
 
+/// Wallhaven 搜索（SFW 公开接口）。
+#[tauri::command]
+async fn wallhaven_search(
+    query: String,
+    page: Option<u32>,
+    sorting: Option<String>,
+    atleast: Option<String>,
+) -> CmdResult<Vec<wallhaven::WhThumb>> {
+    wallhaven::search(
+        query,
+        page.unwrap_or(1),
+        sorting.unwrap_or_else(|| "relevance".into()),
+        atleast.unwrap_or_default(),
+    )
+    .await
+}
+
 #[tauri::command]
 fn reveal_item(path: String) -> CmdResult<()> {
     tauri_plugin_opener::reveal_item_in_dir(std::path::Path::new(&path))
@@ -235,7 +253,8 @@ pub fn run() {
             save_collections,
             create_collection,
             reveal_item,
-            export_wallpaper
+            export_wallpaper,
+            wallhaven_search
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

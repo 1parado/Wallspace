@@ -105,6 +105,30 @@ export async function createCollection(name: string): Promise<Collection> {
   return invoke('create_collection', { name });
 }
 
+export interface WhThumb {
+  id: string;
+  path: string;
+  thumb: string;
+  resolution: string;
+  purity: string;
+  colors: string[];
+}
+
+/** Wallhaven 搜索（SFW 公开接口，无需 Key） */
+export async function wallhavenSearch(params: {
+  query: string;
+  page?: number;
+  sorting?: string;
+  atleast?: string;
+}): Promise<WhThumb[]> {
+  return invoke('wallhaven_search', {
+    query: params.query,
+    page: params.page ?? 1,
+    sorting: params.sorting ?? 'relevance',
+    atleast: params.atleast ?? '',
+  });
+}
+
 export interface ExportResult {
   path: string;
   item: WallpaperItem | null;
