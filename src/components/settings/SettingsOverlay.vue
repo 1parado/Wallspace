@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useUiStore } from '../../stores/ui';
 import { testConnection } from '../../lib/api';
+import { isEnabled as autostartEnabled, enable as autostartEnable, disable as autostartDisable } from '@tauri-apps/plugin-autostart';
 import { useI18n } from '../../lib/i18n';
 import type { ThemeMode } from '../../types';
 import Icon from '../common/Icon.vue';
@@ -15,11 +16,31 @@ const { t } = useI18n();
 
 const testing = ref(false);
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
+const launchAtLogin = ref(false);
 
-onMounted(() => {
+onMounted(async () => {
   settings.load();
   collections.load();
+  try {
+    launchAtLogin.value = await autostartEnabled();
+  } catch {
+    /* 插件不可用时忽略 */
+  }
 });
+
+async function toggleLaunchAtLogin() {
+  try {
+    if (launchAtLogin.value) {
+      await autostartDisable();
+      launchAtLogin.value = false;
+    } else {
+      await autostartEnable();
+      launchAtLogin.value = true;
+    }
+  } catch (e) {
+    ui.toast('error', String(e));
+  }
+}
 
 const SWITCH_INTERVALS = [1, 5, 10, 15, 30, 60, 120];
 
@@ -183,6 +204,23 @@ function saveAndClose() {
             </div>
           </template>
           <p class="privacy">{{ t('settings.autoSwitchHint') }}</p>
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.launchAtLogin') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: launchAtLogin }"
+                @click="!launchAtLogin && toggleLaunchAtLogin()"
+              >
+                {{ t('settings.launchOn') }}
+              </button>
+              <button
+                :class="{ active: !launchAtLogin }"
+                @click="launchAtLogin && toggleLaunchAtLogin()"
+              >
+                {{ t('settings.launchOff') }}
+              </button>
+            </div>
+          </div>
         </section>
       </div>
 

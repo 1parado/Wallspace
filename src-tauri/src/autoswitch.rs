@@ -38,11 +38,16 @@ pub fn spawn(app: AppHandle) {
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(30));
         // 轮换失败静默忽略（如显示器暂时不可用），下一轮重试
-        let _ = tick(&app);
+        let _ = rotate(&app, false);
     });
 }
 
-fn tick(app: &AppHandle) -> CmdResult<()> {
+/// 托盘「下一张」：无视间隔立即轮换。
+pub fn force_next(app: &AppHandle) {
+    let _ = rotate(app, true);
+}
+
+fn rotate(app: &AppHandle, force: bool) -> CmdResult<()> {
     let cfg = settings::load(app);
     let Some(cid) = cfg
         .auto_switch_collection_id
@@ -55,7 +60,7 @@ fn tick(app: &AppHandle) -> CmdResult<()> {
 
     let state = load_state(app);
     let now = now_ms();
-    if state.last_switch != 0 && now.saturating_sub(state.last_switch) < interval_ms {
+    if !force && state.last_switch != 0 && now.saturating_sub(state.last_switch) < interval_ms {
         return Ok(());
     }
 
