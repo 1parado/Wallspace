@@ -9,9 +9,7 @@ import { sortItems } from '../lib/sortItems';
 import { COLOR_FAMILIES, countByFamily, familyOfHex } from '../lib/colorFamily';
 import { guessCategory, suggestTags } from '../lib/autoTag';
 import * as api from '../lib/api';
-import type { DupGroup } from '../lib/api';
-import { assetUrl } from '../lib/api';
-import { useSettingsStore } from '../stores/settings';
+import { assetUrl } from '../lib/api';import { useSettingsStore } from '../stores/settings';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -276,9 +274,18 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
     : [...ui.sourceFilter, s];
 }
 
-// —— 重复图片检测 ——
-const dupRunning = ref(false);
-const dupGroups = ref<DupGroup[] | null>(null);
+// —— 重复 / 相似图片检测 ——
+interface GroupRow {
+  ids: string[];
+  /** 精确重复时为单张文件大小；相似检测为 null */
+  fileSize: number | null;
+}
+
+const scanBusy = ref(false);
+const scanKind = ref<'dup' | 'sim'>('dup');
+const simThreshold = ref(8);
+/** 弹窗数据：两种检测共用 */
+const dupGroups = ref<GroupRow[] | null>(null);
 
 function fmtMb(bytes: number): string {
   const mb = bytes / (1024 * 1024);
@@ -286,28 +293,44 @@ function fmtMb(bytes: number): string {
 }
 
 const dupWasted = computed(() =>
-  (dupGroups.value ?? []).reduce((sum, g) => sum + (g.ids.length - 1) * g.fileSize, 0)
+  (dupGroups.value ?? []).reduce((sum, g) => sum + (g.fileSize ?? 0) * (g.ids.length - 1), 0)
 );
 
-function groupItems(g: DupGroup) {
+function groupItems(g: GroupRow) {
   return g.ids.map((id) => lib.byId(id)).filter((i): i is WallpaperItem => !!i);
 }
 
 async function findDups() {
-  if (dupRunning.value) return;
-  dupRunning.value = true;
+  if (scanBusy.value) return;
+  scanBusy.value = true;
   try {
     const groups = await api.findDuplicates();
-    dupGroups.value = groups;
+    scanKind.value = 'dup';
+    dupGroups.value = groups.map((g) => ({ ids: g.ids, fileSize: g.fileSize }));
     if (!groups.length) ui.toast('info', t('dup.none'));
   } catch (e) {
     ui.toast('error', String(e));
   } finally {
-    dupRunning.value = false;
+    scanBusy.value = false;
   }
 }
 
-/** 清理一组重复：保留第一张，其余移入回收站 */
+async function findSims() {
+  if (scanBusy.value) return;
+  scanBusy.value = true;
+  try {
+    const groups = await api.findSimilar(simThreshold.value);
+    scanKind.value = 'sim';
+    dupGroups.value = groups.map((g) => ({ ids: g.ids, fileSize: null }));
+    if (!groups.length) ui.toast('info', t('dup.none'));
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    scanBusy.value = false;
+  }
+}
+
+/** 清理一组：保留第一张，其余移入回收站 */
 async function cleanGroup(gi: number) {
   const g = dupGroups.value?.[gi];
   if (!g) return;
@@ -492,13 +515,22 @@ async function cleanGroup(gi: number) {
       </button>
     </div>
 
-    <!-- 重复检测：库维护 -->
+    <!-- 重复 / 相似检测：库维护 -->
     <div v-if="hasAny" class="retag-row">
       <span class="result-count">{{ t('dup.cta') }}</span>
-      <button class="chip retag-btn" :disabled="dupRunning" @click="findDups">
+      <button class="chip retag-btn" :disabled="scanBusy" @click="findDups">
         <Icon name="copy" :size="13" />
-        {{ dupRunning ? t('dup.scanning') : t('dup.scan') }}
+        {{ scanBusy && scanKind === 'dup' ? t('dup.scanning') : t('dup.scan') }}
       </button>
+      <button class="chip retag-btn" :disabled="scanBusy" @click="findSims">
+        <Icon name="sparkles" :size="13" />
+        {{ scanBusy && scanKind === 'sim' ? t('dup.scanning') : t('sim.scan') }}
+      </button>
+      <select v-model="simThreshold" class="chip sim-threshold" :title="t('sim.threshold')">
+        <option :value="4">{{ t('sim.strict') }}</option>
+        <option :value="8">{{ t('sim.normal') }}</option>
+        <option :value="14">{{ t('sim.loose') }}</option>
+      </select>
     </div>
 
     <!-- 结果栏：计数 + 排序 + 随机换一张 -->
@@ -531,17 +563,21 @@ async function cleanGroup(gi: number) {
       @action="ui.resetFacets(); ui.search = ''"
     />
 
-    <!-- 重复检测结果弹窗 -->
+    <!-- 重复 / 相似检测结果弹窗 -->
     <div v-if="dupGroups" class="dup-backdrop" @click.self="dupGroups = null">
       <div class="dup-modal glass">
         <div class="dup-head">
-          <h3>{{ t('dup.title') }}</h3>
+          <h3>{{ scanKind === 'dup' ? t('dup.title') : t('sim.title') }}</h3>
           <button class="dup-close" @click="dupGroups = null">
             <Icon name="x" :size="14" />
           </button>
         </div>
         <p class="dup-summary">
-          {{ t('dup.summary', { g: dupGroups.length, mb: fmtMb(dupWasted) }) }}
+          {{
+            scanKind === 'dup'
+              ? t('dup.summary', { g: dupGroups.length, mb: fmtMb(dupWasted) })
+              : t('sim.summary', { g: dupGroups.length })
+          }}
         </p>
         <p v-if="!dupGroups.length" class="dup-empty">{{ t('dup.none') }}</p>
         <div v-else class="dup-list">
@@ -555,8 +591,12 @@ async function cleanGroup(gi: number) {
               </div>
             </div>
             <button class="chip dup-clean" @click="cleanGroup(gi)">
-              {{ t('dup.removeDupes', { n: g.ids.length - 1 }) }}
-              · {{ fmtMb(g.fileSize * (g.ids.length - 1)) }}
+              {{
+                g.fileSize != null
+                  ? t('dup.removeDupes', { n: g.ids.length - 1 })
+                    + ' · ' + fmtMb(g.fileSize * (g.ids.length - 1))
+                  : t('sim.removeSimilar', { n: g.ids.length - 1 })
+              }}
             </button>
           </div>
         </div>
@@ -869,6 +909,13 @@ async function cleanGroup(gi: number) {
 
 .dup-clean:hover {
   filter: brightness(1.08);
+}
+
+.sim-threshold {
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  outline: none;
 }
 
 

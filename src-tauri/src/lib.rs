@@ -365,6 +365,12 @@ async fn find_duplicates(app: AppHandle) -> CmdResult<Vec<duplicates::DupGroup>>
     duplicates::find(app).await
 }
 
+/// 检测库内相似图片（aHash 感知哈希 + 汉明距离并查集分组），后台多线程解码。
+#[tauri::command]
+async fn find_similar(app: AppHandle, threshold: u32) -> CmdResult<Vec<duplicates::SimGroup>> {
+    duplicates::find_similar(app, threshold).await
+}
+
 /// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
 #[tauri::command]
 async fn export_wallpaper(
@@ -486,6 +492,7 @@ pub fn run() {
             reveal_item,
             extract_palette,
             find_duplicates,
+            find_similar,
             export_wallpaper,
             wallhaven_search
         ])

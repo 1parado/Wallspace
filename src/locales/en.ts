@@ -94,7 +94,7 @@ export default {
   'facets.retagDone': 'Done: {n} updated ({c} categorized, {t} tagged)',
   'facets.retagNone': 'Nothing to organize',
 
-  'dup.cta': 'The library may contain duplicate imports',
+  'dup.cta': 'The library may contain duplicate or similar images',
   'dup.scan': 'Find duplicates',
   'dup.scanning': 'Scanning...',
   'dup.title': 'Duplicate images',
@@ -104,6 +104,14 @@ export default {
   'dup.dupe': 'Dupe',
   'dup.removeDupes': 'Remove {n} dupes',
   'dup.removed': 'Cleaned {n} duplicate images',
+  'sim.scan': 'Find similar',
+  'sim.strict': 'Strict',
+  'sim.normal': 'Normal',
+  'sim.loose': 'Loose',
+  'sim.threshold': 'Similarity threshold',
+  'sim.title': 'Similar images',
+  'sim.summary': '{g} similar groups found',
+  'sim.removeSimilar': 'Remove other {n}',
 
   'toolbar.allDisplays': 'All Displays',
   'toolbar.display': 'Display',

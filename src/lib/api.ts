@@ -148,6 +148,16 @@ export async function findDuplicates(): Promise<DupGroup[]> {
   return invoke('find_duplicates');
 }
 
+export interface SimGroup {
+  /** 组内条目 id（感知上互为相似） */
+  ids: string[];
+}
+
+/** 检测库内相似图片（aHash 感知哈希，threshold 为汉明距离阈值） */
+export async function findSimilar(threshold: number): Promise<SimGroup[]> {
+  return invoke('find_similar', { threshold });
+}
+
 export async function listCollections(): Promise<Collection[]> {
   return invoke('list_collections');
 }

@@ -73,3 +73,97 @@ pub async fn find(app: AppHandle) -> CmdResult<Vec<DupGroup>> {
     .await
     .map_err(|e| format!("查重任务失败: {e}"))?
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimGroup {
+    /// 组内条目 id（感知上互为相似）
+    pub ids: Vec<String>,
+}
+
+/// aHash 感知哈希：8×8 灰度缩略图，像素亮度与均值比较生成 64 位指纹。
+fn ahash64(path: &str) -> Option<u64> {
+    let img = image::open(path).ok()?;
+    let small = img
+        .resize_exact(8, 8, image::imageops::FilterType::Triangle)
+        .to_luma8();
+    let vals: Vec<u8> = small.pixels().map(|p| p.0[0]).collect();
+    let mean = vals.iter().map(|&v| v as u32).sum::<u32>() / (vals.len() as u32).max(1);
+    let mut h = 0u64;
+    for (i, &v) in vals.iter().enumerate() {
+        if u32::from(v) > mean {
+            h |= 1 << i;
+        }
+    }
+    Some(h)
+}
+
+/// 检测相似图片：aHash + 汉明距离 ≤ threshold，并查集归组（多线程解码）。
+pub async fn find_similar(app: AppHandle, threshold: u32) -> CmdResult<Vec<SimGroup>> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<SimGroup>, String> {
+        let items = library::load(&app);
+        let list: Vec<(String, String)> = items
+            .iter()
+            .map(|it| (it.id.clone(), it.file_path.clone()))
+            .collect();
+
+        // 多线程并行解码计算哈希（CPU 密集，按线程数分块）
+        let mut hashes: Vec<(String, u64)> = Vec::new();
+        let chunk = (list.len() / 8 + 1).max(1);
+        std::thread::scope(|s| {
+            let handles: Vec<_> = list
+                .chunks(chunk)
+                .map(|c| {
+                    let c = c.to_vec();
+                    s.spawn(move || {
+                        c.into_iter()
+                            .filter_map(|(id, p)| ahash64(&p).map(|h| (id, h)))
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            for h in handles {
+                if let Ok(part) = h.join() {
+                    hashes.extend(part);
+                }
+            }
+        });
+
+        // 并查集归组：两两汉明距离 ≤ threshold 即同类
+        let n = hashes.len();
+        let mut parent: Vec<usize> = (0..n).collect();
+        fn root(p: &mut Vec<usize>, mut x: usize) -> usize {
+            while p[x] != x {
+                p[x] = p[p[x]];
+                x = p[x];
+            }
+            x
+        }
+        for i in 0..n {
+            for j in i + 1..n {
+                let d = (hashes[i].1 ^ hashes[j].1).count_ones();
+                if d <= threshold {
+                    let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
+                    if ri != rj {
+                        parent[ri] = rj;
+                    }
+                }
+            }
+        }
+
+        // 收集组（保持库内原始顺序），只留 >1 的组
+        let mut by_root: HashMap<usize, Vec<String>> = HashMap::new();
+        for (idx, (id, _)) in hashes.iter().enumerate() {
+            by_root.entry(root(&mut parent, idx)).or_default().push(id.clone());
+        }
+        let mut out: Vec<SimGroup> = by_root
+            .into_values()
+            .filter(|ids| ids.len() > 1)
+            .map(|ids| SimGroup { ids })
+            .collect();
+        out.sort_by(|a, b| b.ids.len().cmp(&a.ids.len()));
+        Ok(out)
+    })
+    .await
+    .map_err(|e| format!("相似检测任务失败: {e}"))?
+}
