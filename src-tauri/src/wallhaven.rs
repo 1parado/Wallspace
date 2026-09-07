@@ -43,11 +43,13 @@ struct WhThumbs {
 }
 
 /// 搜索 Wallhaven（SFW）。query 可为空（配合 toplist 浏览热门）。
+/// color：官方调色板 hex（可带 #，空则不过滤）。
 pub async fn search(
     query: String,
     page: u32,
     sorting: String,
     atleast: String,
+    color: Option<String>,
 ) -> CmdResult<Vec<WhThumb>> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
@@ -71,6 +73,12 @@ pub async fn search(
     ];
     if !atleast.trim().is_empty() {
         params.push(("atleast".to_string(), atleast.trim().to_string()));
+    }
+    if let Some(c) = color {
+        let c = c.trim().trim_start_matches('#').to_lowercase();
+        if !c.is_empty() {
+            params.push(("colors".to_string(), c));
+        }
     }
 
     let resp = client

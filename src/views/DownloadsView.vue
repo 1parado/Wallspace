@@ -32,12 +32,19 @@ async function download() {
 const whQuery = ref('');
 const whSorting = ref('relevance');
 const whRes = ref('');
+const whColor = ref('');
 const whResults = ref<WhThumb[]>([]);
 const whPage = ref(1);
 const whSearching = ref(false);
 const whError = ref('');
 const whSearched = ref(false);
 const importingId = ref<string | null>(null);
+
+/** Wallhaven 官方调色板子集（hex 不带 #，作为 colors 参数过滤） */
+const WH_COLORS = [
+  'cc0000', 'ea4c88', '993399', '333399', '0055cc', '0099cc',
+  '66cccc', '77cc33', '999900', 'cccc33', '000000', 'ffffff',
+];
 
 const WH_SORTS = [
   { id: 'relevance', labelKey: 'downloads.sortRelevance' },
@@ -64,6 +71,7 @@ async function whSearch(reset = true) {
       page,
       sorting: whSorting.value,
       atleast: whRes.value,
+      color: whColor.value,
     });
     whPage.value = page;
     whResults.value = reset ? res : [...whResults.value, ...res];
@@ -169,6 +177,21 @@ async function applyRandom() {
         <button class="btn-primary" :disabled="whSearching" @click="whSearch()">
           <Icon name="search" :size="14" />
           {{ whSearching ? t('downloads.whSearching') : t('downloads.whSearch') }}
+        </button>
+      </div>
+      <div class="wh-color-row">
+        <span class="wh-color-label">{{ t('facets.color') }}</span>
+        <button
+          v-for="c in WH_COLORS"
+          :key="c"
+          class="wh-swatch"
+          :class="{ active: whColor === c }"
+          :style="{ background: '#' + c }"
+          :title="'#' + c"
+          @click="whColor = whColor === c ? '' : c"
+        />
+        <button v-if="whColor" class="wh-color-clear" @click="whColor = ''">
+          {{ t('facets.reset') }}
         </button>
       </div>
       <p v-if="whError" class="wh-error">{{ whError }}</p>
@@ -323,6 +346,59 @@ async function applyRandom() {
   font-weight: 600;
   color: var(--text-1);
   margin-bottom: 14px;
+}
+
+/* Wallhaven 颜色过滤 */
+.wh-color-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.wh-color-label {
+  font-size: 11.5px;
+  font-weight: 560;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-right: 4px;
+}
+
+.wh-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--stroke);
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.45);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.wh-swatch:hover {
+  transform: scale(1.15);
+}
+
+.wh-swatch.active {
+  border-color: var(--text-1);
+  transform: scale(1.15);
+}
+
+.wh-color-clear {
+  font-size: 11.5px;
+  color: var(--text-3);
+  border: 1px dashed var(--stroke);
+  border-radius: 100px;
+  padding: 2px 10px;
+  margin-left: 6px;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.wh-color-clear:hover {
+  color: var(--text-1);
+  border-color: var(--stroke-strong);
 }
 
 .wh-error {

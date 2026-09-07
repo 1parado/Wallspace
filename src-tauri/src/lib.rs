@@ -281,12 +281,14 @@ async fn wallhaven_search(
     page: Option<u32>,
     sorting: Option<String>,
     atleast: Option<String>,
+    color: Option<String>,
 ) -> CmdResult<Vec<wallhaven::WhThumb>> {
     wallhaven::search(
         query,
         page.unwrap_or(1),
         sorting.unwrap_or_else(|| "relevance".into()),
         atleast.unwrap_or_default(),
+        color,
     )
     .await
 }

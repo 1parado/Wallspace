@@ -163,12 +163,15 @@ export async function wallhavenSearch(params: {
   page?: number;
   sorting?: string;
   atleast?: string;
+  /** 官方调色板 hex（可带 #，空则不过滤） */
+  color?: string;
 }): Promise<WhThumb[]> {
   return invoke('wallhaven_search', {
     query: params.query,
     page: params.page ?? 1,
     sorting: params.sorting ?? 'relevance',
     atleast: params.atleast ?? '',
+    color: params.color ?? '',
   });
 }
 
