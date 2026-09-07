@@ -371,6 +371,20 @@ async fn find_similar(app: AppHandle, threshold: u32) -> CmdResult<Vec<duplicate
     duplicates::find_similar(app, threshold).await
 }
 
+/// 读取本地文件原始字节（用于前端 canvas 合成，避免 asset 协议画布污染）。
+#[tauri::command]
+fn read_binary_file(path: String) -> Result<tauri::ipc::Response, String> {
+    std::fs::read(&path)
+        .map(tauri::ipc::Response::new)
+        .map_err(|e| format!("读取文件失败: {e}"))
+}
+
+/// 写入二进制文件（分享卡等前端生成的图片落盘）。
+#[tauri::command]
+fn save_binary_file(path: String, bytes: Vec<u8>) -> CmdResult<()> {
+    std::fs::write(&path, bytes).map_err(|e| format!("写入文件失败: {e}"))
+}
+
 /// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
 #[tauri::command]
 async fn export_wallpaper(
@@ -493,6 +507,8 @@ pub fn run() {
             extract_palette,
             find_duplicates,
             find_similar,
+            read_binary_file,
+            save_binary_file,
             export_wallpaper,
             wallhaven_search
         ])

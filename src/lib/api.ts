@@ -158,6 +158,16 @@ export async function findSimilar(threshold: number): Promise<SimGroup[]> {
   return invoke('find_similar', { threshold });
 }
 
+/** 读取本地文件原始字节（ArrayBuffer，供 canvas 合成避免画布污染） */
+export async function readBinaryFile(path: string): Promise<ArrayBuffer> {
+  return invoke('read_binary_file', { path });
+}
+
+/** 写入二进制文件（前端生成的图片落盘） */
+export async function saveBinaryFile(path: string, bytes: Uint8Array): Promise<void> {
+  return invoke('save_binary_file', { path, bytes: Array.from(bytes) });
+}
+
 export async function listCollections(): Promise<Collection[]> {
   return invoke('list_collections');
 }
