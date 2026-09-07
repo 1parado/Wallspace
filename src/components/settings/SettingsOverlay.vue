@@ -3,8 +3,9 @@ import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useUiStore } from '../../stores/ui';
-import { testConnection } from '../../lib/api';
+import { testConnection, exportBackup, importBackup } from '../../lib/api';
 import { isEnabled as autostartEnabled, enable as autostartEnable, disable as autostartDisable } from '@tauri-apps/plugin-autostart';
+import { save as saveDialog, open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '../../lib/i18n';
 import type { ThemeMode } from '../../types';
 import Icon from '../common/Icon.vue';
@@ -43,6 +44,56 @@ async function toggleLaunchAtLogin() {
 }
 
 const SWITCH_INTERVALS = [1, 5, 10, 15, 30, 60, 120];
+
+// —— 备份与恢复 ——
+const backingUp = ref(false);
+
+async function runExportBackup() {
+  if (backingUp.value) return;
+  const target = await saveDialog({
+    title: t('settings.backupSaveTitle'),
+    defaultPath: `wallspace-backup-${new Date().toISOString().slice(0, 10)}.zip`,
+    filters: [{ name: 'Wallspace Backup', extensions: ['zip'] }],
+  });
+  if (!target) return;
+  backingUp.value = true;
+  try {
+    const n = await exportBackup(target);
+    ui.toast('success', t('settings.backupDone', { n }));
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    backingUp.value = false;
+  }
+}
+
+async function runImportBackup() {
+  if (backingUp.value) return;
+  const picked = await openDialog({
+    title: t('settings.backupOpenTitle'),
+    multiple: false,
+    filters: [{ name: 'Wallspace Backup', extensions: ['zip'] }],
+  });
+  if (!picked || Array.isArray(picked)) return;
+  backingUp.value = true;
+  try {
+    const r = await importBackup(picked);
+    if (r.imported) await settings.load();
+    await collections.load();
+    ui.toast(
+      r.imported ? 'success' : 'info',
+      t('settings.restoreDone', {
+        n: r.imported,
+        s: r.skipped,
+        c: r.collectionsAdded,
+      })
+    );
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    backingUp.value = false;
+  }
+}
 
 async function runTest() {
   testing.value = true;
@@ -309,6 +360,21 @@ function saveAndClose() {
           </div>
           <p v-if="settings.globalShortcuts" class="privacy">{{ t('settings.globalShortcutsHint') }}</p>
         </section>
+
+        <section>
+          <p class="group-label">{{ t('settings.backup') }}</p>
+          <div class="backup-row">
+            <button class="backup-btn" :disabled="backingUp" @click="runExportBackup">
+              <Icon name="download" :size="13" />
+              {{ backingUp ? t('settings.backupWorking') : t('settings.backupExport') }}
+            </button>
+            <button class="backup-btn" :disabled="backingUp" @click="runImportBackup">
+              <Icon name="restore" :size="13" />
+              {{ t('settings.backupRestore') }}
+            </button>
+          </div>
+          <p class="privacy">{{ t('settings.backupHint') }}</p>
+        </section>
       </div>
 
       <div class="foot">
@@ -320,6 +386,36 @@ function saveAndClose() {
 </template>
 
 <style scoped>
+.backup-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.backup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text-1);
+  background: var(--fill-subtle);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-btn);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.backup-btn:hover:not(:disabled) {
+  background: var(--fill-hover);
+  border-color: var(--stroke-strong);
+}
+
+.backup-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .backdrop {
   position: fixed;
   inset: 0;

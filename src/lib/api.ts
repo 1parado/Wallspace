@@ -99,6 +99,22 @@ export async function classifyText(text: string): Promise<LlmClassify | null> {
   return invoke('classify_text', { text });
 }
 
+/** 导出库备份（清单 + 图片 zip），返回导出条目数 */
+export async function exportBackup(savePath: string): Promise<number> {
+  return invoke('export_backup', { savePath });
+}
+
+export interface BackupImportResult {
+  imported: number;
+  skipped: number;
+  collectionsAdded: number;
+}
+
+/** 从备份恢复（按 id 合并，已存在跳过） */
+export async function importBackup(path: string): Promise<BackupImportResult> {
+  return invoke('import_backup', { path });
+}
+
 export async function revealItem(path: string): Promise<void> {
   return invoke('reveal_item', { path });
 }

@@ -1,5 +1,6 @@
 mod auto_classify;
 mod autoswitch;
+mod backup;
 mod collections;
 mod download;
 mod export;
@@ -122,6 +123,26 @@ fn apply_global_shortcuts(app: &AppHandle, enable: bool) {
 #[tauri::command]
 async fn test_connection(base_url: String, api_key: String) -> CmdResult<Vec<String>> {
     settings::test_connection(base_url, api_key).await
+}
+
+/// 导出库备份（清单 + 图片 zip）到指定路径，返回导出条目数。
+#[tauri::command]
+async fn export_backup(app: AppHandle, save_path: String) -> CmdResult<u32> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::export(&app, std::path::Path::new(&save_path))
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {e}"))?
+}
+
+/// 从备份恢复（按 id 合并，已存在跳过）。
+#[tauri::command]
+async fn import_backup(app: AppHandle, path: String) -> CmdResult<backup::ImportOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        backup::import(&app, std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {e}"))?
 }
 
 /// 单条文本 LLM 打标（「一键智能整理」的规则未命中回退）。
@@ -313,6 +334,8 @@ pub fn run() {
             save_settings,
             test_connection,
             classify_text,
+            export_backup,
+            import_backup,
             grok_imagine,
             grok_imagine_status,
             list_collections,
