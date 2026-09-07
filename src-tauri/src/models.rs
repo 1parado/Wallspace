@@ -87,6 +87,9 @@ pub struct Settings {
     /// 全局快捷键：Ctrl+Alt+N 下一张 / Ctrl+Alt+P 暂停/恢复轮换
     #[serde(default)]
     pub global_shortcuts: bool,
+    /// 自动备份间隔（天）：0 = 关闭
+    #[serde(default)]
+    pub auto_backup_days: u32,
 }
 
 fn default_locale() -> String {
@@ -139,6 +142,7 @@ impl Default for Settings {
             night_start: default_night_start(),
             auto_switch_random: false,
             global_shortcuts: false,
+            auto_backup_days: 0,
         }
     }
 }

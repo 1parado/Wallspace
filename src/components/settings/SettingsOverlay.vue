@@ -373,6 +373,15 @@ function saveAndClose() {
               {{ t('settings.backupRestore') }}
             </button>
           </div>
+          <label class="field">
+            <span>{{ t('settings.autoBackup') }}</span>
+            <select v-model.number="settings.autoBackupDays" class="text-field">
+              <option :value="0">{{ t('settings.autoBackupOff') }}</option>
+              <option :value="1">{{ t('settings.autoBackupDaily') }}</option>
+              <option :value="7">{{ t('settings.autoBackupWeekly') }}</option>
+              <option :value="30">{{ t('settings.autoBackupMonthly') }}</option>
+            </select>
+          </label>
           <p class="privacy">{{ t('settings.backupHint') }}</p>
         </section>
       </div>

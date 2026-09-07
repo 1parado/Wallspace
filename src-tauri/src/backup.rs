@@ -7,6 +7,7 @@ use crate::collections::{self, Collection};
 use crate::library;
 use crate::models::{now_ms, CmdResult, WallpaperItem};
 use crate::paths;
+use crate::settings;
 use crate::store;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -19,6 +20,9 @@ use zip::write::SimpleFileOptions;
 
 const MANIFEST: &str = "manifest.json";
 const FORMAT: u32 = 1;
+const AUTO_KEY: &str = "last_auto_backup";
+const AUTO_PREFIX: &str = "wallspace-auto-";
+const AUTO_KEEP: usize = 5;
 
 #[derive(Serialize, Deserialize)]
 struct BackupItem {
@@ -195,4 +199,50 @@ pub fn import(app: &AppHandle, zip_path: &Path) -> CmdResult<ImportOutcome> {
         skipped,
         collections_added: added,
     })
+}
+
+/// 自动备份节拍（挂在轮换后台线程上，每 30 秒检查一次）：
+/// auto_backup_days = 0 关闭；到达间隔后在数据目录 backups/ 下生成日期命名 zip，保留最近 AUTO_KEEP 份。
+pub fn auto_backup_tick(app: &AppHandle) -> CmdResult<()> {
+    let days = settings::load(app).auto_backup_days;
+    if days == 0 {
+        return Ok(());
+    }
+    let now = now_ms();
+    let last = store::kv_get(app, AUTO_KEY)
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0);
+    let interval = (days as u64) * 86_400_000;
+    if last != 0 && now.saturating_sub(last) < interval {
+        return Ok(());
+    }
+    // 先记时间戳：即使本次失败也不在 30 秒节拍里反复重试，下个周期再试
+    store::kv_set(app, AUTO_KEY, &now.to_string())?;
+
+    let dir = paths::data_root(app)?.join("backups");
+    fs::create_dir_all(&dir).map_err(|e| format!("创建备份目录失败: {e}"))?;
+    let name = format!(
+        "{AUTO_PREFIX}{}.zip",
+        chrono::Local::now().format("%Y%m%d")
+    );
+    export(app, &dir.join(&name))?;
+    prune_auto_backups(&dir);
+    Ok(())
+}
+
+/// 只保留最近 AUTO_KEEP 份自动备份（文件名含日期，字典序即时间序）
+fn prune_auto_backups(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with(AUTO_PREFIX) && n.ends_with(".zip"))
+        .collect();
+    names.sort();
+    while names.len() > AUTO_KEEP {
+        let oldest = names.remove(0);
+        let _ = fs::remove_file(dir.join(&oldest));
+    }
 }

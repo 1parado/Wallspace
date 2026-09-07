@@ -60,6 +60,8 @@ export interface Settings {
   autoSwitchRandom?: boolean;
   /** 全局快捷键：Ctrl+Alt+N 下一张 / Ctrl+Alt+P 暂停/恢复轮换 */
   globalShortcuts?: boolean;
+  /** 自动备份间隔（天）：0 = 关闭 */
+  autoBackupDays?: number;
   nightStart?: string;
 }
 
