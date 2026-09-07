@@ -12,6 +12,16 @@ export const CATEGORIES = [
 
 let toastSeq = 0;
 
+export type SortMode = 'newest' | 'oldest' | 'name' | 'resolution' | 'random';
+
+function readSortMode(): string {
+  try {
+    return localStorage.getItem('wallspace.sortMode') || 'newest';
+  } catch {
+    return 'newest';
+  }
+}
+
 export const useUiStore = defineStore('ui', {
   state: () => ({
     view: 'discover' as ViewId,
@@ -41,8 +51,27 @@ export const useUiStore = defineStore('ui', {
     colorFilter: null as string | null,
     /** 当前打开的集合（view = 'collection' 时有效） */
     activeCollectionId: null as string | null,
+
+    // —— 排序（Wallpapers 视图）——
+    /** newest | oldest | name | resolution | random */
+    sortMode: (readSortMode() as SortMode) || 'newest',
+    /** 随机排序的洗牌种子：重复点「随机」时更新 */
+    sortSeed: 0 as number,
   }),
   actions: {
+    /** 设置排序；重复点「随机」时重新洗牌 */
+    setSort(mode: SortMode) {
+      if (mode === 'random' && this.sortMode === 'random') {
+        this.sortSeed = Date.now();
+        return;
+      }
+      this.sortMode = mode;
+      try {
+        localStorage.setItem('wallspace.sortMode', mode);
+      } catch {
+        /* 隐私模式等场景忽略 */
+      }
+    },
     toast(kind: Toast['kind'], message: string) {
       const id = ++toastSeq;
       this.toasts.push({ id, kind, message });

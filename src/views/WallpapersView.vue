@@ -126,6 +126,55 @@ const isFiltering = computed(
     !!ui.colorFilter
 );
 
+// —— 排序 + 随机应用 ——
+const SORTS = [
+  { id: 'newest', labelKey: 'facets.sortNewest' },
+  { id: 'oldest', labelKey: 'facets.sortOldest' },
+  { id: 'name', labelKey: 'facets.sortName' },
+  { id: 'resolution', labelKey: 'facets.sortResolution' },
+  { id: 'random', labelKey: 'facets.sortRandom' },
+] as const;
+
+/** 种子随机数（mulberry32）：同一种子序列稳定，换种子即重新洗牌 */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const sorted = computed(() => {
+  const arr = [...filtered.value];
+  switch (ui.sortMode) {
+    case 'oldest':
+      return arr.sort((a, b) => a.createdAt - b.createdAt);
+    case 'name':
+      return arr.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    case 'resolution':
+      return arr.sort((a, b) => b.width * b.height - a.width * a.height);
+    case 'random': {
+      const rnd = seededRandom(ui.sortSeed || 1);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    default:
+      return arr.sort((a, b) => b.createdAt - a.createdAt);
+  }
+});
+
+/** 随机换一张：从当前过滤结果中随机挑一张立即应用 */
+async function applyRandom() {
+  if (!sorted.value.length || lib.applyingId) return;
+  const pick = sorted.value[Math.floor(Math.random() * sorted.value.length)];
+  await lib.apply(pick.id);
+}
+
 function catLabel(key: string): string {
   return displayCategory(key, t, t('cat.uncategorized'));
 }
@@ -337,7 +386,33 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
       </div>
     </div>
 
-    <WallpaperGrid v-if="filtered.length" :items="filtered" />
+    <!-- 结果栏：计数 + 排序 + 随机换一张 -->
+    <div v-if="hasAny" class="grid-bar">
+      <span class="result-count">{{ t('facets.resultCount', { n: filtered.length }) }}</span>
+      <span class="bar-spacer" />
+      <span class="facet-label">{{ t('facets.sort') }}</span>
+      <button
+        v-for="s in SORTS"
+        :key="s.id"
+        class="chip"
+        :class="{ active: ui.sortMode === s.id }"
+        @click="ui.setSort(s.id)"
+      >
+        {{ t(s.labelKey) }}
+      </button>
+      <span class="facet-sep" />
+      <button
+        class="chip shuffle-apply"
+        :disabled="!!lib.applyingId || !filtered.length"
+        :title="t('facets.randomApplyTip')"
+        @click="applyRandom"
+      >
+        <Icon name="shuffle" :size="13" />
+        {{ lib.applyingId ? t('preview.applying') : t('facets.randomApply') }}
+      </button>
+    </div>
+
+    <WallpaperGrid v-if="filtered.length" :items="sorted" />
 
     <EmptyState
       v-else-if="!hasAny"
@@ -507,5 +582,37 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 
 .chip.more:hover {
   color: var(--text-1);
+}
+
+.grid-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.result-count {
+  font-size: 12.5px;
+  color: var(--text-3);
+  margin-right: 6px;
+}
+
+.bar-spacer {
+  flex: 1;
+}
+
+.shuffle-apply {
+  color: var(--text-1);
+  background: var(--fill-subtle);
+}
+
+.shuffle-apply:hover:not(:disabled) {
+  background: var(--fill-hover);
+  border-color: var(--stroke-strong);
+}
+
+.shuffle-apply:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 </style>
