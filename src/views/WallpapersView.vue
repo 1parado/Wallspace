@@ -7,6 +7,8 @@ import { useI18n } from '../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import { sortItems } from '../lib/sortItems';
 import { guessCategory, suggestTags } from '../lib/autoTag';
+import * as api from '../lib/api';
+import { useSettingsStore } from '../stores/settings';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -14,6 +16,7 @@ import Icon from '../components/common/Icon.vue';
 
 const lib = useLibraryStore();
 const ui = useUiStore();
+const settings = useSettingsStore();
 const { t } = useI18n();
 
 function ratioOf(i: WallpaperItem): string {
@@ -147,12 +150,29 @@ async function applyRandom() {
   await lib.apply(pick.id);
 }
 
-// —— 一键智能整理：给缺分类/缺标签的旧图回填 autoTag 规则结果 ——
+// —— 一键智能整理：规则回填 + 可选 LLM（classify_model）兜底 ——
 const retagging = ref(false);
+const retagProgress = ref<{ done: number; total: number } | null>(null);
 
 const retaggable = computed(
   () => lib.items.filter((i) => !i.category?.trim() || !(i.tags?.length)).length
 );
+
+function textOf(item: WallpaperItem): string {
+  // 文本源：标题 + 提示词 + 链接末段（文件名常含关键词）
+  const tail = (item.originUrl ?? '').split(/[/?]/).filter(Boolean).pop() ?? '';
+  return `${item.title} ${item.prompt ?? ''} ${decodeURIComponent(tail)}`;
+}
+
+/** 把分类/标签建议合并进条目：只补空缺、只追加新标签；返回是否实际变更 */
+function mergeSuggestion(item: WallpaperItem, cat: string | null, tags: string[]): Partial<WallpaperItem> | null {
+  const changes: Partial<WallpaperItem> = {};
+  if (!item.category?.trim() && cat) changes.category = cat;
+  const have = new Set(item.tags ?? []);
+  const fresh = tags.filter((tg) => tg && !have.has(tg));
+  if (fresh.length) changes.tags = [...(item.tags ?? []), ...fresh].slice(0, 8);
+  return Object.keys(changes).length ? changes : null;
+}
 
 async function retagLibrary() {
   if (retagging.value) return;
@@ -161,31 +181,42 @@ async function retagLibrary() {
   let cats = 0;
   let tgs = 0;
   try {
+    // 第一遍：关键词规则（本地、瞬时）
     for (const item of lib.items) {
-      // 文本源：标题 + 提示词 + 链接末段（文件名常含关键词）
-      const tail = (item.originUrl ?? '').split(/[/?]/).filter(Boolean).pop() ?? '';
-      const text = `${item.title} ${item.prompt ?? ''} ${decodeURIComponent(tail)}`;
-      const changes: Partial<WallpaperItem> = {};
-      if (!item.category?.trim()) {
-        const cat = guessCategory(text);
-        if (cat) {
-          changes.category = cat;
-          cats++;
-        }
-      }
-      const have = new Set(item.tags ?? []);
-      const sug = suggestTags(text).filter((tg) => !have.has(tg));
-      if (sug.length) {
-        changes.tags = [...(item.tags ?? []), ...sug].slice(0, 8);
-        tgs++;
-      }
-      if (Object.keys(changes).length) {
-        await lib.patch(item, changes);
+      const text = textOf(item);
+      const s = mergeSuggestion(item, guessCategory(text), suggestTags(text));
+      if (s) {
+        if (s.category) cats++;
+        if (s.tags) tgs++;
+        await lib.patch(item, s);
         touched++;
       }
     }
+
+    // 第二遍：规则未解决的交给轻量模型（最多 40 条，失败/未配置即止）
+    if ((settings.classifyModel ?? '').trim()) {
+      const unresolved = lib.items
+        .filter((i) => !i.category?.trim() || !(i.tags?.length))
+        .slice(0, 40);
+      retagProgress.value = { done: 0, total: unresolved.length };
+      for (let n = 0; n < unresolved.length; n++) {
+        retagProgress.value = { done: n + 1, total: unresolved.length };
+        const r = await api.classifyText(textOf(unresolved[n]));
+        if (!r) break; // 未配置或请求失败：停止，保留已有结果
+        const item = unresolved[n];
+        const s = mergeSuggestion(item, r.category, r.tags);
+        if (s) {
+          if (s.category) cats++;
+          if (s.tags) tgs++;
+          await lib.patch(item, s);
+          touched++;
+        }
+      }
+      retagProgress.value = null;
+    }
   } finally {
     retagging.value = false;
+    retagProgress.value = null;
   }
   ui.toast(
     touched ? 'success' : 'info',
@@ -409,7 +440,9 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
       <span class="result-count">{{ t('facets.retagCta', { n: retaggable }) }}</span>
       <button class="chip retag-btn" :disabled="retagging" @click="retagLibrary">
         <Icon name="sparkles" :size="13" />
-        {{ retagging ? t('facets.retagging') : t('facets.retagRun') }}
+        {{ retagProgress
+          ? t('facets.retaggingN', { done: retagProgress.done, total: retagProgress.total })
+          : retagging ? t('facets.retagging') : t('facets.retagRun') }}
       </button>
     </div>
 

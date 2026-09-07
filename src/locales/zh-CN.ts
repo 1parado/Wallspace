@@ -71,6 +71,7 @@ export default {
   'facets.retagCta': '有 {n} 张壁纸缺分类或标签',
   'facets.retagRun': '一键智能整理',
   'facets.retagging': '整理中…',
+  'facets.retaggingN': '智能整理 {done}/{total}…',
   'facets.retagDone': '整理完成：{n} 张已更新（补分类 {c}、补标签 {t}）',
   'facets.retagNone': '没有需要整理的内容',
 

@@ -89,6 +89,16 @@ export async function testConnection(
   return invoke('test_connection', { baseUrl, apiKey });
 }
 
+export interface LlmClassify {
+  category: string | null;
+  tags: string[];
+}
+
+/** 单条文本 LLM 打标；未配置模型或调用失败返回 null（前端回退关键词规则） */
+export async function classifyText(text: string): Promise<LlmClassify | null> {
+  return invoke('classify_text', { text });
+}
+
 export async function revealItem(path: string): Promise<void> {
   return invoke('reveal_item', { path });
 }

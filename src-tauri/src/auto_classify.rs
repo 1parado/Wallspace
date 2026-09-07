@@ -13,6 +13,23 @@ pub struct LlmClassify {
     pub tags: Vec<String>,
 }
 
+/// 前端 DTO（camelCase 序列化）
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmClassifyDto {
+    pub category: Option<String>,
+    pub tags: Vec<String>,
+}
+
+impl From<LlmClassify> for LlmClassifyDto {
+    fn from(r: LlmClassify) -> Self {
+        Self {
+            category: r.category,
+            tags: r.tags,
+        }
+    }
+}
+
 const SYSTEM_PROMPT: &str = r#"You label wallpaper-generation prompts for a wallpaper library.
 Reply with ONLY a JSON object, no markdown, no extra text:
 {"category": string or null, "tags": string[]}

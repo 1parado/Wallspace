@@ -69,6 +69,7 @@ export default {
   'facets.retagCta': '{n} wallpapers missing category or tags',
   'facets.retagRun': 'Auto-organize',
   'facets.retagging': 'Organizing…',
+  'facets.retaggingN': 'Auto-organizing {done}/{total}…',
   'facets.retagDone': 'Done: {n} updated ({c} categorized, {t} tagged)',
   'facets.retagNone': 'Nothing to organize',
 

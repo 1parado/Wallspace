@@ -105,6 +105,28 @@ async fn test_connection(base_url: String, api_key: String) -> CmdResult<Vec<Str
     settings::test_connection(base_url, api_key).await
 }
 
+/// 单条文本 LLM 打标（「一键智能整理」的规则未命中回退）。
+/// 未配置模型/key 或调用失败都返回 None，由前端保留关键词规则结果。
+#[tauri::command]
+async fn classify_text(
+    app: AppHandle,
+    text: String,
+) -> CmdResult<Option<auto_classify::LlmClassifyDto>> {
+    let cfg = settings::load(&app);
+    if cfg.classify_model.trim().is_empty() || cfg.api_key.trim().is_empty() {
+        return Ok(None);
+    }
+    Ok(auto_classify::classify(
+        &cfg.api_base_url,
+        &cfg.api_key,
+        &cfg.classify_model,
+        &text,
+    )
+    .await
+    .ok()
+    .map(Into::into))
+}
+
 /// Grok（grok.com 账号池）直连生图，实现与 grok_switch ImagineEngine 一致。
 #[tauri::command]
 async fn grok_imagine(
@@ -247,6 +269,7 @@ pub fn run() {
             get_settings,
             save_settings,
             test_connection,
+            classify_text,
             grok_imagine,
             grok_imagine_status,
             list_collections,
