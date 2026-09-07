@@ -19,6 +19,8 @@ export const useUiStore = defineStore('ui', {
     categoryFilter: null as string | null,
     search: '',
     previewId: null as string | null,
+    /** 打开预览时所在列表的条目顺序（预览层上一张/下一张导航用）；空 = 退回整个库顺序 */
+    previewIds: [] as string[],
     settingsOpen: false,
     /** 目标显示器：null = 所有显示器 */
     selectedDisplay: null as string | null,

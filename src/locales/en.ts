@@ -151,6 +151,8 @@ export default {
   'preview.rename': 'Rename',
   'preview.copyPrompt': 'Copy prompt',
   'preview.similarTip': 'Regenerate with the same prompt',
+  'preview.prev': 'Previous',
+  'preview.next': 'Next',
   'export.open': 'Export as…',
   'export.title': 'Export as…',
   'export.presets': 'Presets',

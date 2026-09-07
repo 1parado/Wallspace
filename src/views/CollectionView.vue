@@ -135,7 +135,7 @@ async function quickApply() {
       </div>
     </div>
 
-    <div v-if="items.length" class="grid">
+    <div v-if="items.length" class="grid" @click.capture="ui.previewIds = items.map((i) => i.id)">
       <div
         v-for="(item, i) in items"
         :key="item.id"

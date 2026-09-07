@@ -153,6 +153,8 @@ export default {
   'preview.rename': '重命名',
   'preview.copyPrompt': '复制提示词',
   'preview.similarTip': '用同一条提示词重新生成',
+  'preview.prev': '上一张',
+  'preview.next': '下一张',
   'export.open': '导出为…',
   'export.title': '导出为…',
   'export.presets': '预设尺寸',

@@ -16,6 +16,23 @@ const { t } = useI18n();
 
 const item = computed(() => lib.byId(ui.previewId));
 
+// —— 上一张 / 下一张导航（点击按钮与 ←/→ 共用） ——
+/** 当前浏览列表：打开预览时所在网格的顺序；无记录时退回整个库顺序 */
+const navIds = computed(() =>
+  ui.previewIds.length ? ui.previewIds : lib.items.map((i) => i.id)
+);
+const navIdx = computed(() => navIds.value.findIndex((id) => id === ui.previewId));
+const hasPrev = computed(() => navIdx.value > 0);
+const hasNext = computed(() => navIdx.value !== -1 && navIdx.value < navIds.value.length - 1);
+
+function goPrev() {
+  if (hasPrev.value) ui.previewId = navIds.value[navIdx.value - 1];
+}
+
+function goNext() {
+  if (hasNext.value) ui.previewId = navIds.value[navIdx.value + 1];
+}
+
 const addToOpen = ref(false);
 const editingTitle = ref(false);
 const titleDraft = ref('');
@@ -74,13 +91,10 @@ function onKey(e: KeyboardEvent) {
     return;
   }
   if (typing || editingTitle.value || showExport.value) return;
-  // ←/→ 在当前库顺序内切换预览
+  // ←/→ 在当前浏览列表内切换预览
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    const items = lib.items;
-    const idx = items.findIndex((i) => i.id === ui.previewId);
-    if (idx === -1) return;
-    const next = idx + (e.key === 'ArrowRight' ? 1 : -1);
-    if (next >= 0 && next < items.length) ui.previewId = items[next].id;
+    if (e.key === 'ArrowLeft') goPrev();
+    else goNext();
     return;
   }
   // A 应用壁纸
@@ -226,6 +240,27 @@ function openSource() {
 
       <div class="stage">
         <img :src="assetUrl(item.filePath)" draggable="false" @dblclick="openInExplorer" />
+
+        <!-- 上一张 / 下一张（点击或 ←/→） -->
+        <button
+          v-if="hasPrev"
+          class="nav-btn prev"
+          :title="t('preview.prev') + ' (←)'"
+          @click="goPrev"
+        >
+          <Icon name="chevron-left" :size="20" />
+        </button>
+        <button
+          v-if="hasNext"
+          class="nav-btn next"
+          :title="t('preview.next') + ' (→)'"
+          @click="goNext"
+        >
+          <Icon name="chevron-right" :size="20" />
+        </button>
+        <span v-if="navIds.length > 1" class="nav-counter">
+          {{ navIdx + 1 }} / {{ navIds.length }}
+        </span>
       </div>
 
       <div class="bar">
@@ -458,6 +493,7 @@ function openSource() {
 }
 
 .stage {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -465,6 +501,54 @@ function openSource() {
   background:
     radial-gradient(120% 120% at 50% 0%, var(--glow) 0%, transparent 60%),
     var(--bg-stage);
+}
+
+/* 上一张 / 下一张悬浮按钮 */
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(15, 15, 18, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    background var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.nav-btn:hover {
+  background: rgba(15, 15, 18, 0.65);
+  transform: translateY(-50%) scale(1.06);
+}
+
+.nav-btn.prev {
+  left: 14px;
+}
+
+.nav-btn.next {
+  right: 14px;
+}
+
+.nav-counter {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(15, 15, 18, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 100px;
+  padding: 3px 12px;
+  pointer-events: none;
 }
 
 .stage img {

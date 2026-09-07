@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import type { WallpaperItem } from '../../types';
 import WallpaperCard from './WallpaperCard.vue';
+import { useUiStore } from '../../stores/ui';
 
-defineProps<{ items: WallpaperItem[] }>();
+const props = defineProps<{ items: WallpaperItem[] }>();
+const ui = useUiStore();
+
+// 捕获阶段记录点击时所在列表的顺序，供预览层上一张/下一张导航
+function recordList() {
+  ui.previewIds = props.items.map((i) => i.id);
+}
 </script>
 
 <template>
-  <div class="grid">
+  <div class="grid" @click.capture="recordList">
     <WallpaperCard v-for="item in items" :key="item.id" :item="item" />
   </div>
 </template>
