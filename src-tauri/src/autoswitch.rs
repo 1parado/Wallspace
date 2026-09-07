@@ -3,9 +3,10 @@
 //! 每 30 秒检查一次设置：
 //! - 启用条件：auto_switch_collection_id 非空且对应集合存在有效条目
 //! - 距上次切换超过 auto_switch_interval_min 分钟 → 取集合内下一张（循环）
+//!   或 auto_switch_random 开启时随机挑一张（不与当前重复）
 //! - 应用范围：主屏（display=None）或全部显示器逐屏适配
 //!
-//! 状态持久化在 rotation.json（index + last_switch），重启后按上次位置继续轮换。
+//! 状态持久化在 SQLite kv（index + last_switch），重启后按上次位置继续轮换。
 
 use crate::collections;
 use crate::library;
@@ -132,7 +133,12 @@ fn rotate(app: &AppHandle, force: bool) -> CmdResult<()> {
     if items.is_empty() {
         return Ok(());
     }
-    let idx = state.index % items.len();
+    let prev = state.index % items.len();
+    let idx = if cfg.auto_switch_random && items.len() > 1 {
+        random_index(items.len(), prev)
+    } else {
+        prev
+    };
     let item = items.swap_remove(idx);
 
     apply(app, &cfg, &item)?;
@@ -146,6 +152,23 @@ fn rotate(app: &AppHandle, force: bool) -> CmdResult<()> {
             window_key,
         },
     )
+}
+
+/// 随机挑一个不同于 current 的下标（时间戳纳秒做简单熵源即可，无需 rand 依赖）
+fn random_index(len: usize, current: usize) -> usize {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let n = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as usize)
+        .unwrap_or(0);
+    let mut idx = (n.wrapping_mul(2_654_435_761) >> 8) % len;
+    if idx == current {
+        idx = (idx + 1 + (n & 1)) % len;
+        if idx == current {
+            idx = (idx + 1) % len;
+        }
+    }
+    idx
 }
 
 /// 日/夜模式闸门：窗口未变化则不切换

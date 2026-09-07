@@ -56,6 +56,8 @@ export interface Settings {
   nightCollectionId?: string | null;
   /** 白天/夜晚开始时间 "HH:MM" */
   dayStart?: string;
+  /** 轮换时随机挑选（否则按集合顺序取下一张） */
+  autoSwitchRandom?: boolean;
   nightStart?: string;
 }
 

@@ -252,6 +252,8 @@ export default {
   'settings.scopePrimary': '仅主屏',
   'settings.scopeAll': '全部显示器',
   'settings.autoSwitchHint': '后台每 30 秒检查一次，到达间隔后自动从集合轮换下一张；重启后按上次位置继续。',
+  'settings.autoSwitchRandom': '随机挑选',
+  'settings.autoSwitchRandomHint': '开启后每次轮换从集合中随机挑一张（不与当前重复），顺序模式则按集合排序依次切换。',
   'settings.launchAtLogin': '开机自动启动',
   'settings.launchOn': '启用',
   'settings.launchOff': '关闭',

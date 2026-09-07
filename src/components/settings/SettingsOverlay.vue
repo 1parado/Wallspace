@@ -235,6 +235,23 @@ function saveAndClose() {
           </template>
 
           <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.autoSwitchRandom') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: settings.autoSwitchRandom }"
+                @click="settings.autoSwitchRandom = true"
+              >
+                {{ t('settings.launchOn') }}
+              </button>
+              <button
+                :class="{ active: !settings.autoSwitchRandom }"
+                @click="settings.autoSwitchRandom = false"
+              >
+                {{ t('settings.launchOff') }}
+              </button>
+            </div>
+          </div>
+          <div class="appearance-item">
             <span class="appearance-label">{{ t('settings.autoSwitchScope') }}</span>
             <div class="segmented">
               <button
@@ -252,7 +269,9 @@ function saveAndClose() {
             </div>
           </div>
           <p class="privacy">
-            {{ settings.autoSwitchMode === 'daynight' ? t('settings.dayNightHint') : t('settings.autoSwitchHint') }}
+            {{ settings.autoSwitchRandom
+              ? t('settings.autoSwitchRandomHint')
+              : (settings.autoSwitchMode === 'daynight' ? t('settings.dayNightHint') : t('settings.autoSwitchHint')) }}
           </p>
           <div class="appearance-item">
             <span class="appearance-label">{{ t('settings.launchAtLogin') }}</span>

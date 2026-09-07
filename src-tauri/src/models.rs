@@ -81,6 +81,9 @@ pub struct Settings {
     /// 夜晚开始时间 "HH:MM"
     #[serde(default = "default_night_start")]
     pub night_start: String,
+    /// 轮换时随机挑选（否则按集合顺序取下一张）
+    #[serde(default)]
+    pub auto_switch_random: bool,
 }
 
 fn default_locale() -> String {
@@ -131,6 +134,7 @@ impl Default for Settings {
             night_collection_id: None,
             day_start: default_day_start(),
             night_start: default_night_start(),
+            auto_switch_random: false,
         }
     }
 }

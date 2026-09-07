@@ -250,6 +250,8 @@ export default {
   'settings.scopePrimary': 'Primary only',
   'settings.scopeAll': 'All monitors',
   'settings.autoSwitchHint': 'Checked every 30 s in the background; rotates to the next collection item when the interval elapses. Resumes where it left off after restart.',
+  'settings.autoSwitchRandom': 'Random pick',
+  'settings.autoSwitchRandomHint': 'When on, each switch picks a random wallpaper from the collection (never the current one); otherwise it follows the collection order.',
   'settings.launchAtLogin': 'Launch at login',
   'settings.launchOn': 'On',
   'settings.launchOff': 'Off',
