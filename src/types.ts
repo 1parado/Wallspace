@@ -6,8 +6,9 @@ export interface WallpaperItem {
   width: number;
   height: number;
   fileSize: number;
-  /** 可空分类；「自动」模式下由 tags + palette 承担归类 */
-  category?: string;
+  /** 可空分类（Rust Option 序列化为 null）；「自动」模式下由 tags + palette 承担归类。
+   *  层级用 '/' 约定，如 'Nature/Mountains' */
+  category?: string | null;
   tags: string[];
   /** 主色调色板（hex，最多 5 色，按占比排序），用于按颜色过滤 */
   palette?: string[];

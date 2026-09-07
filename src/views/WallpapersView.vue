@@ -4,6 +4,7 @@ import type { WallpaperItem } from '../types';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
+import { buildCategoryTree, matchCategory, type CatNode } from '../lib/categoryTree';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 
@@ -22,17 +23,26 @@ function ratioOf(i: WallpaperItem): string {
 const RATIO_KEYS = ['wide', 'landscape', 'square', 'portrait'] as const;
 const SOURCES = ['ai', 'url', 'local'] as const;
 
-/** 库内实际存在的分类（含未分类），动态显示 */
-const activeCategories = computed(() => {
-  const counts = new Map<string | null, number>();
-  for (const i of lib.items) {
-    const c = i.category ?? null;
-    counts.set(c, (counts.get(c) ?? 0) + 1);
+/** 分类树：只显示库内有内容的节点 */
+const catTree = computed(() => buildCategoryTree(lib.items));
+
+const uncategorizedCount = computed(
+  () => lib.items.filter((i) => !i.category?.trim()).length
+);
+
+/** 选中分类对应树节点（用于展开其子分类 chips 行） */
+function findNode(nodes: CatNode[], key: string): CatNode | null {
+  for (const n of nodes) {
+    if (n.key === key) return n;
+    const hit = findNode(n.children, key);
+    if (hit) return hit;
   }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([c, n]) => ({ key: c, count: n }));
-});
+  return null;
+}
+
+const selectedNode = computed(() =>
+  ui.categoryFilter ? findNode(catTree.value, ui.categoryFilter) : null
+);
 
 /** 标签 facet：按出现次数取前 14 个 */
 const topTags = computed(() => {
@@ -64,8 +74,8 @@ const ratioCount = (r: string) => lib.items.filter((i) => ratioOf(i) === r).leng
 
 const filtered = computed(() => {
   let items = lib.items;
-  if (ui.categoryFilter) {
-    items = items.filter((i) => (i.category ?? null) === ui.categoryFilter);
+  if (ui.categoryFilter !== null) {
+    items = items.filter((i) => matchCategory(i.category, ui.categoryFilter));
   }
   if (ui.sourceFilter.length) {
     items = items.filter((i) => ui.sourceFilter.includes(i.source));
@@ -99,7 +109,7 @@ const filtered = computed(() => {
 const hasAny = computed(() => lib.items.length > 0);
 const isFiltering = computed(
   () =>
-    !!ui.categoryFilter ||
+    ui.categoryFilter !== null ||
     !!ui.search.trim() ||
     ui.tagFilter.length > 0 ||
     ui.sourceFilter.length > 0 ||
@@ -107,8 +117,8 @@ const isFiltering = computed(
     !!ui.colorFilter
 );
 
-function catLabel(key: string | null): string {
-  return key ? t(`cat.${key.toLowerCase()}`) : t('cat.uncategorized');
+function catLabel(key: string): string {
+  return key.includes('/') ? key.split('/').pop()! : t('cat.' + key.toLowerCase());
 }
 
 function toggleSource(s: 'ai' | 'url' | 'local') {
@@ -121,21 +131,57 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 <template>
   <div class="wallpapers">
     <div class="facets">
-      <!-- 分类：动态（只显示库内有内容的） -->
+      <!-- 分类：动态树（只显示库内有内容的），选中父分类时展开其子分类 -->
       <div class="facet-row">
         <span class="facet-label">{{ t('facets.category') }}</span>
-        <button class="chip" :class="{ active: !ui.categoryFilter }" @click="ui.categoryFilter = null">
+        <button
+          class="chip"
+          :class="{ active: ui.categoryFilter === null }"
+          @click="ui.categoryFilter = null"
+        >
           {{ t('toolbar.allWallpapers') }}
         </button>
         <button
-          v-for="c in activeCategories"
-          :key="c.key ?? 'none'"
+          v-for="node in catTree"
+          :key="node.key"
           class="chip"
-          :class="{ active: (ui.categoryFilter ?? null) === c.key }"
-          @click="ui.categoryFilter = ui.categoryFilter === c.key ? null : c.key ?? null"
+          :class="{ active: ui.categoryFilter !== null && matchCategory(ui.categoryFilter, node.key) }"
+          @click="ui.categoryFilter = ui.categoryFilter === node.key ? null : node.key"
         >
-          {{ catLabel(c.key) }}
-          <span class="chip-count">{{ c.count }}</span>
+          {{ catLabel(node.key) }}
+          <span class="chip-count">{{ node.count }}</span>
+        </button>
+        <button
+          v-if="uncategorizedCount"
+          class="chip"
+          :class="{ active: ui.categoryFilter === '' }"
+          @click="ui.categoryFilter = ui.categoryFilter === '' ? null : ''"
+        >
+          {{ t('cat.uncategorized') }}
+          <span class="chip-count">{{ uncategorizedCount }}</span>
+        </button>
+      </div>
+
+      <!-- 子分类行：选中某分类后展开 -->
+      <div v-if="selectedNode && selectedNode.children.length" class="facet-row sub-row">
+        <span class="facet-label">{{ t('facets.subcategory') }}</span>
+        <button
+          class="chip"
+          :class="{ active: ui.categoryFilter === selectedNode.key }"
+          @click="ui.categoryFilter = selectedNode.key"
+        >
+          {{ t('facets.allSub') }}
+          <span class="chip-count">{{ selectedNode.count }}</span>
+        </button>
+        <button
+          v-for="child in selectedNode.children"
+          :key="child.key"
+          class="chip"
+          :class="{ active: ui.categoryFilter === child.key }"
+          @click="ui.categoryFilter = ui.categoryFilter === child.key ? selectedNode.key : child.key"
+        >
+          {{ catLabel(child.key) }}
+          <span class="chip-count">{{ child.count }}</span>
         </button>
       </div>
 
@@ -244,6 +290,12 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.facet-row.sub-row {
+  padding-left: 14px;
+  border-left: 2px solid var(--stroke);
+  margin-left: 4px;
 }
 
 .facet-row {

@@ -4,6 +4,7 @@ import { useUiStore } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
+import { buildCategoryTree, matchCategory, type CatNode } from '../../lib/categoryTree';
 import { open } from '@tauri-apps/plugin-dialog';
 import Icon from '../common/Icon.vue';
 
@@ -33,25 +34,41 @@ const CATEGORY_ICONS: Record<string, string> = {
   Minimal: 'image',
 };
 
-/** 动态分类：只显示库内有内容的（含「未分类」），并带计数角标 */
-const activeCategories = computed(() => {
-  const counts = new Map<string | null, number>();
-  for (const i of lib.items) {
-    const c = i.category ?? null;
-    counts.set(c, (counts.get(c) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => ({ key, count }));
-});
+/** 分类树：只显示库内有内容的节点（含「未分类」空档位） */
+const catTree = computed(() => buildCategoryTree(lib.items));
+const uncategorizedCount = computed(
+  () => lib.items.filter((i) => !i.category?.trim()).length
+);
+
+/** 已展开的父分类（本地 UI 状态） */
+const expanded = ref(new Set<string>());
+
+function toggleExpand(key: string) {
+  const next = new Set(expanded.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  expanded.value = next;
+}
+
+/** 顶层分类是否被「前缀命中」（选中父分类时高亮它） */
+function isTreeActive(node: CatNode): boolean {
+  return ui.view === 'wallpapers' && ui.categoryFilter !== null
+    ? matchCategory(ui.categoryFilter, node.key)
+    : false;
+}
 
 function catLabel(key: string | null): string {
-  return key ? t('cat.' + key.toLowerCase()) : t('cat.uncategorized');
+  if (!key) return t('cat.uncategorized');
+  // 子分类（无内置翻译）直接显示最后一段原名
+  return key.includes('/')
+    ? key.split('/').pop()!
+    : t('cat.' + key.toLowerCase());
 }
 
 function goCategory(cat: string) {
   ui.view = 'wallpapers';
-  ui.categoryFilter = cat || null;
+  // '' = 未分类；null = 全部
+  ui.categoryFilter = cat;
   ui.search = '';
 }
 
@@ -136,17 +153,50 @@ async function importOwn() {
 
     <div class="section">
       <p class="section-label">{{ t('nav.categories') }}</p>
+      <template v-for="node in catTree" :key="node.key">
+        <button
+          class="nav-item sub"
+          :class="{ active: ui.view === 'wallpapers' && isTreeActive(node) }"
+          :title="catLabel(node.key)"
+          :aria-label="catLabel(node.key)"
+          @click="goCategory(node.key)"
+        >
+          <button
+            v-if="node.children.length"
+            class="twist"
+            :class="{ open: expanded.has(node.key) }"
+            :title="t('nav.expand')"
+            @click.stop="toggleExpand(node.key)"
+          >
+            <Icon name="chevron-down" :size="12" />
+          </button>
+          <Icon :name="CATEGORY_ICONS[node.key] ?? 'image'" :size="16" />
+          <span class="nav-text">{{ catLabel(node.key) }}</span>
+          <span v-if="node.children.length" class="sub-n">{{ node.children.length }}</span>
+        </button>
+        <button
+          v-for="child in expanded.has(node.key) ? node.children : []"
+          :key="child.key"
+          class="nav-item sub child"
+          :class="{ active: ui.view === 'wallpapers' && ui.categoryFilter === child.key }"
+          :title="catLabel(child.key)"
+          :aria-label="catLabel(child.key)"
+          @click="goCategory(child.key)"
+        >
+          <span class="twist-gap" />
+          <Icon name="image" :size="14" />
+          <span class="nav-text">{{ catLabel(child.key) }}</span>
+        </button>
+      </template>
       <button
-        v-for="c in activeCategories"
-        :key="c.key ?? 'none'"
+        v-if="uncategorizedCount"
         class="nav-item sub"
-        :class="{ active: ui.view === 'wallpapers' && (ui.categoryFilter ?? null) === c.key }"
-        :title="catLabel(c.key)"
-        :aria-label="catLabel(c.key)"
-        @click="goCategory(c.key ?? '')"
+        :class="{ active: ui.view === 'wallpapers' && ui.categoryFilter === '' }"
+        :title="t('cat.uncategorized')"
+        @click="goCategory('')"
       >
-        <Icon :name="(c.key && CATEGORY_ICONS[c.key]) || 'image'" :size="16" />
-        <span class="nav-text">{{ catLabel(c.key) }}</span>
+        <Icon name="image" :size="16" />
+        <span class="nav-text">{{ t('cat.uncategorized') }}</span>
       </button>
     </div>
 

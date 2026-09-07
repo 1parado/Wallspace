@@ -5,6 +5,7 @@ import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { assetUrl, revealItem } from '../../lib/api';
+import { buildCategoryTree, type CatNode } from '../../lib/categoryTree';
 import Icon from '../common/Icon.vue';
 
 const ui = useUiStore();
@@ -106,6 +107,43 @@ async function createAndAdd() {
   if (c && item.value) await collections.addItem(c.id, item.value.id);
 }
 
+// —— 分类编辑（支持层级子分类）——
+const newSubDraft = ref('');
+const editTree = computed(() => buildCategoryTree(lib.items));
+
+function topParentOf(cat: string | null | undefined): string | null {
+  const c = cat?.trim();
+  return c ? c.split('/')[0] : null;
+}
+
+/** 当前正在编辑的父分类对应的树节点（提供子分类 chips） */
+const editNode = computed<CatNode | null>(() => {
+  const top = topParentOf(item.value?.category);
+  return top ? editTree.value.find((n) => n.key === top) ?? null : null;
+});
+
+function isParentActive(c: string): boolean {
+  const cat = item.value?.category;
+  return !!cat && (cat === c || cat.startsWith(c + '/'));
+}
+
+function pickParent(c: string) {
+  if (item.value) lib.patch(item.value, { category: c });
+}
+
+function pickCategory(cat: string | null) {
+  if (item.value) lib.patch(item.value, { category: cat });
+  editCategory.value = false;
+}
+
+function commitNewSub() {
+  const name = newSubDraft.value.trim().replace(/[/\\]/g, '-');
+  newSubDraft.value = '';
+  const top = topParentOf(item.value?.category);
+  if (!name || !top || !item.value) return;
+  pickCategory(`${top}/${name}`);
+}
+
 async function copyPrompt() {
   const p = item.value?.prompt;
   if (!p) return;
@@ -168,13 +206,45 @@ function openSource() {
           </p>
           <div v-if="editCategory" class="cat-chips">
             <button
+              :class="{ active: !item.category?.trim() }"
+              @click="pickCategory(null)"
+            >
+              {{ t('cat.uncategorized') }}
+            </button>
+            <button
               v-for="c in CATEGORIES"
               :key="c"
-              :class="{ active: item.category === c }"
-              @click="lib.patch(item, { category: c }); editCategory = false"
+              :class="{ active: isParentActive(c) }"
+              @click="pickParent(c)"
             >
               {{ t(`cat.${c.toLowerCase()}`) }}
             </button>
+          </div>
+          <div v-if="editCategory && editNode" class="cat-chips sub-chips">
+            <span class="sub-label">{{ t('preview.subcategories') }}</span>
+            <button
+              :class="{ active: item.category === editNode.key }"
+              @click="pickCategory(editNode.key)"
+            >
+              {{ t('preview.allSub') }}
+            </button>
+            <button
+              v-for="child in editNode.children"
+              :key="child.key"
+              :class="{ active: item.category === child.key }"
+              @click="pickCategory(child.key)"
+            >
+              {{ child.name }}
+              <span class="sub-count">{{ child.count }}</span>
+            </button>
+            <input
+              v-model="newSubDraft"
+              class="sub-input"
+              :placeholder="t('preview.newSub')"
+              maxlength="24"
+              @keydown.enter="commitNewSub"
+              @keydown.esc="newSubDraft = ''"
+            />
           </div>
           <div v-if="item.prompt" class="prompt-row">
             <p class="prompt">“{{ item.prompt }}”</p>
@@ -522,6 +592,37 @@ function openSource() {
   font-size: 12.5px;
   color: var(--text-3);
   text-align: center;
+}
+
+.sub-chips {
+  align-items: center;
+}
+
+.sub-label {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-right: 2px;
+}
+
+.sub-count {
+  font-size: 10.5px;
+  color: var(--text-3);
+  margin-left: 4px;
+}
+
+.sub-input {
+  width: 130px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px dashed var(--stroke-strong);
+  background: transparent;
+  color: var(--text-1);
+  font-size: 12px;
+  outline: none;
+}
+
+.sub-input::placeholder {
+  color: var(--text-3);
 }
 
 .prompt-row {
