@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useLibraryStore } from '../stores/library';
 import { useSettingsStore } from '../stores/settings';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
 import { grokImagineStatus } from '../lib/api';
+import { guessCategory, suggestTags } from '../lib/autoTag';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import Icon from '../components/common/Icon.vue';
 
@@ -14,7 +15,28 @@ const ui = useUiStore();
 const { t } = useI18n();
 
 const prompt = ref('');
-const category = ref<string>('Cinematic');
+const LAST_CAT_KEY = 'wallspace.lastCategory';
+const remembered = localStorage.getItem(LAST_CAT_KEY);
+const category = ref<string>(remembered ?? 'Cinematic');
+/** 用户手动改过分类后，不再跟随 prompt 自动预选 */
+const categoryTouched = ref(remembered != null);
+
+// 智能预选：prompt 变化且用户未手动指定时，按关键词规则推荐分类
+watch(prompt, (p) => {
+  if (categoryTouched.value) return;
+  const guess = guessCategory(p);
+  if (guess) category.value = guess;
+});
+
+function pickCategory(c: string) {
+  category.value = c;
+  categoryTouched.value = true;
+  localStorage.setItem(LAST_CAT_KEY, c);
+}
+
+const autoSuggested = computed(
+  () => !categoryTouched.value && !!prompt.value.trim() && !!guessCategory(prompt.value)
+);
 
 /** 生图引擎：OpenAI 兼容接口 / Grok 账号直连（与 grok_switch ImagineEngine 一致） */
 const engine = ref<'openai' | 'grok'>('openai');
@@ -66,10 +88,11 @@ const canGenerate = computed(() => {
 async function generate() {
   if (!canGenerate.value) return;
   const p = prompt.value.trim();
+  const tags = suggestTags(p);
   const item =
     engine.value === 'grok'
-      ? await lib.generateGrok(p, grokModel.value, grokRatio.value, category.value)
-      : await lib.generate(p, size.value, category.value);
+      ? await lib.generateGrok(p, grokModel.value, grokRatio.value, category.value, tags)
+      : await lib.generate(p, size.value, category.value, tags);
   if (item) ui.previewId = item.id;
 }
 
@@ -161,13 +184,16 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
         </div>
 
         <div class="col">
-          <p class="label">{{ t('create.category') }}</p>
+          <p class="label">
+            {{ t('create.category') }}
+            <span v-if="autoSuggested" class="auto-badge">{{ t('create.autoSuggested') }}</span>
+          </p>
           <div class="segmented wrap">
             <button
               v-for="c in ui.categories"
               :key="c"
               :class="{ active: category === c }"
-              @click="category = c"
+              @click="pickCategory(c)"
             >
               {{ t(`cat.${c.toLowerCase()}`) }}
             </button>
@@ -212,6 +238,19 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.auto-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 100px;
+  padding: 1px 7px;
+  vertical-align: 1px;
 }
 
 .label {

@@ -12,12 +12,13 @@ const ui = useUiStore();
 const { t } = useI18n();
 
 const url = ref('');
-const category = ref<string>('Nature');
+// 「自动」(空值) 为默认：不强制选分类，交给标签与主色体系
+const category = ref<string>('');
 
 async function download() {
   const u = url.value.trim();
   if (!u || lib.importingUrl) return;
-  const item = await lib.importUrl(u, category.value);
+  const item = await lib.importUrl(u, category.value || null);
   if (item) {
     url.value = '';
     ui.previewId = item.id;
@@ -40,6 +41,7 @@ async function download() {
         </div>
         <div class="cat-select">
           <select v-model="category">
+            <option value="">{{ t('downloads.auto') }}</option>
             <option v-for="c in ui.categories" :key="c" :value="c">
               {{ t(`cat.${c.toLowerCase()}`) }}
             </option>
