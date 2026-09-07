@@ -48,6 +48,10 @@ export default {
   'facets.ratio.portrait': '竖',
   'facets.color': '颜色',
   'facets.reset': '重置过滤',
+  'facets.active': '已选',
+  'facets.removeFilter': '移除此条件',
+  'facets.moreTags': '更多 {n} 个',
+  'facets.lessTags': '收起',
   'facets.subcategory': '子分类',
   'facets.allSub': '全部',
 

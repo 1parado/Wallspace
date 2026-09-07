@@ -46,6 +46,10 @@ export default {
   'facets.ratio.portrait': 'Portrait',
   'facets.color': 'Color',
   'facets.reset': 'Reset filters',
+  'facets.active': 'Filters',
+  'facets.removeFilter': 'Remove this filter',
+  'facets.moreTags': '+{n} more',
+  'facets.lessTags': 'Show less',
   'facets.subcategory': 'Subcategory',
   'facets.allSub': 'All',
 

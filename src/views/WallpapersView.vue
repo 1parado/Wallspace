@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { WallpaperItem } from '../types';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
@@ -7,6 +7,7 @@ import { useI18n } from '../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import EmptyState from '../components/common/EmptyState.vue';
+import Icon from '../components/common/Icon.vue';
 
 const lib = useLibraryStore();
 const ui = useUiStore();
@@ -44,17 +45,25 @@ const selectedNode = computed(() =>
   ui.categoryFilter ? findNode(catTree.value, ui.categoryFilter) : null
 );
 
-/** 标签 facet：按出现次数取前 14 个 */
-const topTags = computed(() => {
+/** 标签 facet：按出现次数排序；默认展示前 14 个，可展开全部 */
+const TAG_PREVIEW = 14;
+const tagsExpanded = ref(false);
+
+const allTags = computed(() => {
   const counts = new Map<string, number>();
   for (const i of lib.items) {
     for (const tg of i.tags ?? []) counts.set(tg, (counts.get(tg) ?? 0) + 1);
   }
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 14)
     .map(([tag, count]) => ({ tag, count }));
 });
+
+const topTags = computed(() =>
+  tagsExpanded.value ? allTags.value : allTags.value.slice(0, TAG_PREVIEW)
+);
+
+const hiddenTagCount = computed(() => Math.max(0, allTags.value.length - TAG_PREVIEW));
 
 /** 颜色 facet：聚合所有调色板，按占比取前 8 */
 const paletteColors = computed(() => {
@@ -121,6 +130,46 @@ function catLabel(key: string): string {
   return displayCategory(key, t, t('cat.uncategorized'));
 }
 
+/** 已选过滤器汇总条：每个激活条件一个可单独移除的 chip */
+interface FilterChip {
+  key: string;
+  label: string;
+  clear: () => void;
+}
+
+const activeChips = computed<FilterChip[]>(() => {
+  const chips: FilterChip[] = [];
+  const q = ui.search.trim();
+  if (q) chips.push({ key: 'search', label: `"${q}"`, clear: () => (ui.search = '') });
+  if (ui.categoryFilter !== null)
+    chips.push({
+      key: 'cat',
+      label: catLabel(ui.categoryFilter),
+      clear: () => (ui.categoryFilter = null),
+    });
+  for (const tg of ui.tagFilter)
+    chips.push({ key: `tag:${tg}`, label: `#${tg}`, clear: () => ui.toggleTag(tg) });
+  for (const s of ui.sourceFilter)
+    chips.push({
+      key: `src:${s}`,
+      label: t(`facets.src.${s}`),
+      clear: () => toggleSource(s as 'ai' | 'url' | 'local'),
+    });
+  if (ui.ratioFilter)
+    chips.push({
+      key: 'ratio',
+      label: t(`facets.ratio.${ui.ratioFilter}`),
+      clear: () => (ui.ratioFilter = null),
+    });
+  if (ui.colorFilter)
+    chips.push({
+      key: 'color',
+      label: ui.colorFilter.toUpperCase(),
+      clear: () => (ui.colorFilter = null),
+    });
+  return chips;
+});
+
 function toggleSource(s: 'ai' | 'url' | 'local') {
   ui.sourceFilter = ui.sourceFilter.includes(s)
     ? ui.sourceFilter.filter((x) => x !== s)
@@ -131,6 +180,24 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 <template>
   <div class="wallpapers">
     <div class="facets">
+      <!-- 已选过滤器汇总条：逐项移除 -->
+      <div v-if="activeChips.length" class="facet-row summary-row">
+        <span class="facet-label">{{ t('facets.active') }}</span>
+        <button
+          v-for="chip in activeChips"
+          :key="chip.key"
+          class="chip summary-chip"
+          :title="t('facets.removeFilter')"
+          @click="chip.clear()"
+        >
+          {{ chip.label }}
+          <Icon name="x" :size="11" />
+        </button>
+        <button class="chip reset" @click="ui.resetFacets(); ui.search = ''">
+          {{ t('facets.reset') }}
+        </button>
+      </div>
+
       <!-- 分类：动态树（只显示库内有内容的），选中父分类时展开其子分类 -->
       <div class="facet-row">
         <span class="facet-label">{{ t('facets.category') }}</span>
@@ -210,6 +277,16 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
             @click="ui.tagMode = 'all'"
           >{{ t('facets.modeAll') }}</button>
         </span>
+        <button
+          v-if="!tagsExpanded && hiddenTagCount > 0"
+          class="chip more"
+          @click="tagsExpanded = true"
+        >
+          {{ t('facets.moreTags', { n: hiddenTagCount }) }}
+        </button>
+        <button v-else-if="tagsExpanded && hiddenTagCount > 0" class="chip more" @click="tagsExpanded = false">
+          {{ t('facets.lessTags') }}
+        </button>
       </div>
 
       <!-- 来源 / 比例 / 颜色 -->
@@ -385,6 +462,8 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
   height: 20px;
   border-radius: 50%;
   border: 2px solid var(--stroke);
+  /* 中灰细内圈：亮/暗主题下都能与明暗色块形成对比 */
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.45);
   cursor: pointer;
   transition:
     transform var(--dur-1) var(--ease-out),
@@ -398,7 +477,35 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 
 .swatch.active {
   border-color: var(--text-1);
-  box-shadow: 0 0 0 2px var(--fill-active);
+  box-shadow:
+    inset 0 0 0 1px rgba(128, 128, 128, 0.45),
+    0 0 0 2px var(--fill-active);
   transform: scale(1.12);
+}
+
+.summary-row {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--stroke);
+}
+
+.summary-chip {
+  color: var(--text-1);
+  background: var(--fill-active);
+  border-color: var(--stroke-strong);
+  gap: 5px;
+}
+
+.summary-chip:hover {
+  color: var(--text-1);
+  border-color: var(--text-3);
+}
+
+.chip.more {
+  color: var(--text-2);
+  border-style: dashed;
+}
+
+.chip.more:hover {
+  color: var(--text-1);
 }
 </style>
