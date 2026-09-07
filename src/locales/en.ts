@@ -66,6 +66,11 @@ export default {
   'facets.sortRandom': 'Shuffle',
   'facets.randomApply': 'Surprise me',
   'facets.randomApplyTip': 'Apply a random wallpaper from the current results',
+  'facets.retagCta': '{n} wallpapers missing category or tags',
+  'facets.retagRun': 'Auto-organize',
+  'facets.retagging': 'Organizing…',
+  'facets.retagDone': 'Done: {n} updated ({c} categorized, {t} tagged)',
+  'facets.retagNone': 'Nothing to organize',
 
   'toolbar.allDisplays': 'All Displays',
   'toolbar.display': 'Display',

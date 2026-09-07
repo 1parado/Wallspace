@@ -6,6 +6,7 @@ import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import { sortItems } from '../lib/sortItems';
+import { guessCategory, suggestTags } from '../lib/autoTag';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -144,6 +145,52 @@ async function applyRandom() {
   if (!sorted.value.length || lib.applyingId) return;
   const pick = sorted.value[Math.floor(Math.random() * sorted.value.length)];
   await lib.apply(pick.id);
+}
+
+// —— 一键智能整理：给缺分类/缺标签的旧图回填 autoTag 规则结果 ——
+const retagging = ref(false);
+
+const retaggable = computed(
+  () => lib.items.filter((i) => !i.category?.trim() || !(i.tags?.length)).length
+);
+
+async function retagLibrary() {
+  if (retagging.value) return;
+  retagging.value = true;
+  let touched = 0;
+  let cats = 0;
+  let tgs = 0;
+  try {
+    for (const item of lib.items) {
+      // 文本源：标题 + 提示词 + 链接末段（文件名常含关键词）
+      const tail = (item.originUrl ?? '').split(/[/?]/).filter(Boolean).pop() ?? '';
+      const text = `${item.title} ${item.prompt ?? ''} ${decodeURIComponent(tail)}`;
+      const changes: Partial<WallpaperItem> = {};
+      if (!item.category?.trim()) {
+        const cat = guessCategory(text);
+        if (cat) {
+          changes.category = cat;
+          cats++;
+        }
+      }
+      const have = new Set(item.tags ?? []);
+      const sug = suggestTags(text).filter((tg) => !have.has(tg));
+      if (sug.length) {
+        changes.tags = [...(item.tags ?? []), ...sug].slice(0, 8);
+        tgs++;
+      }
+      if (Object.keys(changes).length) {
+        await lib.patch(item, changes);
+        touched++;
+      }
+    }
+  } finally {
+    retagging.value = false;
+  }
+  ui.toast(
+    touched ? 'success' : 'info',
+    touched ? t('facets.retagDone', { n: touched, c: cats, t: tgs }) : t('facets.retagNone')
+  );
 }
 
 function catLabel(key: string): string {
@@ -357,6 +404,15 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
       </div>
     </div>
 
+    <!-- 一键智能整理：库里有缺分类/标签的条目时出现 -->
+    <div v-if="retaggable > 0" class="retag-row">
+      <span class="result-count">{{ t('facets.retagCta', { n: retaggable }) }}</span>
+      <button class="chip retag-btn" :disabled="retagging" @click="retagLibrary">
+        <Icon name="sparkles" :size="13" />
+        {{ retagging ? t('facets.retagging') : t('facets.retagRun') }}
+      </button>
+    </div>
+
     <!-- 结果栏：计数 + 排序 + 随机换一张 -->
     <GridToolbar
       v-if="hasAny"
@@ -541,5 +597,27 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 .chip.more:hover {
   color: var(--text-1);
 }
+
+.retag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.retag-btn {
+  color: var(--text-1);
+  background: var(--fill-subtle);
+}
+
+.retag-btn:hover:not(:disabled) {
+  background: var(--fill-hover);
+  border-color: var(--stroke-strong);
+}
+
+.retag-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 
 </style>
