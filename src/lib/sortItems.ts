@@ -1,8 +1,8 @@
 import type { WallpaperItem } from '../types';
 import type { SortMode } from '../stores/ui';
 
-/** 集合页额外支持 custom = 保持用户拖拽整理的顺序 */
-export type CollSortMode = 'custom' | SortMode;
+/** 集合页额外支持 custom = 保持用户拖拽整理的顺序；'recent' = 按应用时间降序 */
+export type CollSortMode = 'custom' | SortMode | 'recent';
 
 /** 种子随机数（mulberry32）：同一种子序列稳定，换种子即重新洗牌 */
 export function seededRandom(seed: number): () => number {
@@ -27,6 +27,8 @@ export function sortItems(
   switch (mode) {
     case 'custom':
       return items;
+    case 'recent':
+      return [...items].sort((a, b) => (b.appliedAt ?? 0) - (a.appliedAt ?? 0));
     case 'oldest':
       return [...items].sort((a, b) => a.createdAt - b.createdAt);
     case 'name':

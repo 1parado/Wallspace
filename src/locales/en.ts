@@ -64,6 +64,7 @@ export default {
   'facets.sortName': 'Name',
   'facets.sortResolution': 'Resolution',
   'facets.sortRandom': 'Shuffle',
+  'facets.sortRecentApplied': 'Recently applied',
   'facets.randomApply': 'Surprise me',
   'facets.randomApplyTip': 'Apply a random wallpaper from the current results',
   'facets.retagCta': '{n} wallpapers missing category or tags',
@@ -99,6 +100,9 @@ export default {
   'hero.featured': 'Featured',
   'hero.recent': 'Recent',
   'hero.viewAll': 'View all',
+  'hero.daily': 'Daily pick',
+  'hero.dailyApply': 'Set as today’s wallpaper',
+  'hero.dailyOpen': 'View full size',
   'hero.fresh': 'Fresh scenes',
   'hero.lovedFresh': 'Loved & fresh',
 

@@ -3,6 +3,8 @@ import { computed } from 'vue';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
+import { assetUrl } from '../lib/api';
+import { seededRandom } from '../lib/sortItems';
 import WallpaperCard from '../components/wallpaper/WallpaperCard.vue';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -19,6 +21,24 @@ const featured = computed(() => {
 });
 
 const hasLibrary = computed(() => lib.items.length > 0);
+
+// —— 每日推荐：按当天日期做种子，同一天内推荐固定，次日更换 ——
+const dateLabel = new Date().toLocaleDateString();
+
+const daily = computed(() => {
+  if (!lib.items.length) return null;
+  const now = new Date();
+  const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+  const shuffled = [...lib.items];
+  const rnd = seededRandom(seed);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled[0];
+});
+
+const dailyApplying = computed(() => daily.value && lib.applyingId === daily.value.id);
 </script>
 
 <template>
@@ -39,6 +59,33 @@ const hasLibrary = computed(() => lib.items.length > 0);
     </section>
 
     <template v-if="hasLibrary">
+      <!-- 每日推荐 -->
+      <section v-if="daily" class="section">
+        <div class="section-head">
+          <h2>{{ t('hero.daily') }}</h2>
+          <span class="date-hint">{{ dateLabel }}</span>
+        </div>
+        <div class="daily-card" :style="{ backgroundImage: `url(${assetUrl(daily.filePath)})` }">
+          <div class="daily-info">
+            <p class="daily-title">{{ daily.title }}</p>
+            <p class="daily-meta">{{ daily.width }} × {{ daily.height }}</p>
+            <div class="daily-actions">
+              <button
+                class="btn-primary"
+                :disabled="!!lib.applyingId"
+                @click="daily && lib.apply(daily.id)"
+              >
+                <Icon name="monitor" :size="14" />
+                {{ dailyApplying ? t('preview.applying') : t('hero.dailyApply') }}
+              </button>
+              <button class="btn-ghost" @click="ui.previewId = daily.id">
+                {{ t('hero.dailyOpen') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section v-if="featured.length" class="section">
         <div class="section-head">
           <h2>{{ t('hero.featured') }}</h2>
@@ -123,6 +170,62 @@ const hasLibrary = computed(() => lib.items.length > 0);
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.date-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.daily-card {
+  position: relative;
+  aspect-ratio: 21 / 9;
+  border-radius: var(--radius-overlay);
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+  background-size: cover;
+  background-position: center;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.daily-card:hover {
+  transform: translateY(-2px);
+}
+
+.daily-info {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px 28px;
+  background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.62));
+  color: #fff;
+}
+
+.daily-title {
+  font-size: 19px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+.daily-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.daily-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .daily-card {
+    aspect-ratio: 16 / 9;
+  }
 }
 
 .hint {

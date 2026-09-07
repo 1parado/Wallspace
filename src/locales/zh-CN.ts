@@ -66,6 +66,7 @@ export default {
   'facets.sortName': '名称',
   'facets.sortResolution': '分辨率',
   'facets.sortRandom': '随机',
+  'facets.sortRecentApplied': '最近应用',
   'facets.randomApply': '随机换一张',
   'facets.randomApplyTip': '从当前结果中随机挑一张立即设为壁纸',
   'facets.retagCta': '有 {n} 张壁纸缺分类或标签',
@@ -101,6 +102,9 @@ export default {
   'hero.featured': '精选',
   'hero.recent': '最新',
   'hero.viewAll': '查看全部',
+  'hero.daily': '今日推荐',
+  'hero.dailyApply': '设为今日壁纸',
+  'hero.dailyOpen': '查看大图',
   'hero.fresh': '最新场景',
   'hero.lovedFresh': '收藏与最新',
 
