@@ -131,6 +131,11 @@ export async function revealItem(path: string): Promise<void> {
   return invoke('reveal_item', { path });
 }
 
+/** 提取图片主色调（调色板，最多 6 个 hex 色值） */
+export async function extractPalette(path: string): Promise<string[]> {
+  return invoke('extract_palette', { path });
+}
+
 export async function listCollections(): Promise<Collection[]> {
   return invoke('list_collections');
 }

@@ -324,6 +324,7 @@ export default {
   'toast.downloaded': '已下载入库',
   'toast.saved': '设置已保存',
   'toast.promptCopied': '提示词已复制',
+  'toast.colorCopied': '色值已复制',
   'toast.importedN': '已导入 {n} 张壁纸',
   'toast.watchImported': '已从监视文件夹导入 {n} 张壁纸',
   'toast.importFailedN': '{n} 个文件导入失败',

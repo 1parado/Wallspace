@@ -4,7 +4,7 @@ import { useUiStore, CATEGORIES } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
-import { assetUrl, revealItem } from '../../lib/api';
+import { assetUrl, revealItem, extractPalette } from '../../lib/api';
 import { buildCategoryTree, displayCategory, type CatNode } from '../../lib/categoryTree';
 import ExportModal from './ExportModal.vue';
 import Icon from '../common/Icon.vue';
@@ -234,6 +234,35 @@ const sizeLabel = computed(() => {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(item.value.fileSize / 1024)} KB`;
 });
 
+// —— 主色调调色板（点击复制色值） ——
+const palette = ref<string[]>([]);
+let paletteToken = 0;
+
+watch(
+  () => item.value?.filePath,
+  async (path) => {
+    palette.value = [];
+    if (!path) return;
+    const token = ++paletteToken;
+    try {
+      const colors = await extractPalette(path);
+      if (token === paletteToken) palette.value = colors;
+    } catch {
+      /* 提取失败时静默隐藏调色板 */
+    }
+  },
+  { immediate: true }
+);
+
+async function copyColor(hex: string) {
+  try {
+    await navigator.clipboard.writeText(hex);
+    ui.toast('success', t('toast.colorCopied'));
+  } catch (e) {
+    ui.toast('error', String(e));
+  }
+}
+
 // —— 加入集合 ——
 function toggleAddTo() {
   addToOpen.value = !addToOpen.value;
@@ -421,6 +450,16 @@ function openSource() {
             <span class="dot">·</span>
             <span>{{ sourceLabel }}</span>
           </p>
+          <div v-if="palette.length > 1" class="palette">
+            <button
+              v-for="c in palette"
+              :key="c"
+              class="swatch"
+              :style="{ background: c }"
+              :title="c"
+              @click="copyColor(c)"
+            />
+          </div>
           <div v-if="editCategory" class="cat-chips">
             <button
               :class="{ active: !item.category?.trim() }"
@@ -787,6 +826,26 @@ function openSource() {
 
 .dot {
   opacity: 0.5;
+}
+
+/* 主色调调色板 */
+.palette {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid var(--stroke);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.12);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.swatch:hover {
+  transform: scale(1.18);
 }
 
 .cat {

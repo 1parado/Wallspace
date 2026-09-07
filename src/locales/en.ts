@@ -322,6 +322,7 @@ export default {
   'toast.downloaded': 'Downloaded to library',
   'toast.saved': 'Settings saved',
   'toast.promptCopied': 'Prompt copied',
+  'toast.colorCopied': 'Color copied',
   'toast.importedN': 'Imported {n} wallpapers',
   'toast.watchImported': 'Imported {n} wallpapers from the watch folder',
   'toast.importFailedN': '{n} files failed to import',

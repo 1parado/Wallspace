@@ -297,6 +297,65 @@ fn reveal_item(path: String) -> CmdResult<()> {
         .map_err(|e| format!("打开资源管理器失败: {e}"))
 }
 
+/// 提取图片主色调（调色板）：缩略图采样 → 4bit/通道分桶 → 按占比去重取最多 6 色。
+#[tauri::command]
+async fn extract_palette(path: String) -> CmdResult<Vec<String>> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
+        let img = image::open(&path).map_err(|e| format!("读取图片失败: {e}"))?;
+        let thumb = img.thumbnail(64, 64);
+        // 分桶统计：key = 4bit/通道的 RGB，记录计数与各通道累加值
+        let mut buckets: std::collections::HashMap<u16, (u32, u64, u64, u64)> =
+            std::collections::HashMap::new();
+        for px in thumb.to_rgba8().pixels() {
+            if px[3] < 128 {
+                continue; // 跳过透明像素
+            }
+            let (r, g, b) = (px[0] as u64, px[1] as u64, px[2] as u64);
+            let key = (((r >> 4) as u16) << 8) | (((g >> 4) as u16) << 4) | ((b >> 4) as u16);
+            let e = buckets.entry(key).or_insert((0, 0, 0, 0));
+            e.0 += 1;
+            e.1 += r;
+            e.2 += g;
+            e.3 += b;
+        }
+        // 按像素占比排序，依次挑取与已选色距离足够远的颜色
+        let mut cands: Vec<(u32, [f32; 3])> = buckets
+            .into_iter()
+            .map(|(_k, e)| {
+                let n = e.0 as f32;
+                (
+                    e.0,
+                    [
+                        (e.1 as f32 / n).round(),
+                        (e.2 as f32 / n).round(),
+                        (e.3 as f32 / n).round(),
+                    ],
+                )
+            })
+            .collect();
+        cands.sort_by(|a, b| b.0.cmp(&a.0));
+        let mut picked: Vec<[f32; 3]> = Vec::new();
+        for (_, c) in cands {
+            let far = picked.iter().all(|p| {
+                let d = (p[0] - c[0]).powi(2) + (p[1] - c[1]).powi(2) + (p[2] - c[2]).powi(2);
+                d > 48.0 * 48.0
+            });
+            if far {
+                picked.push(c);
+                if picked.len() >= 6 {
+                    break;
+                }
+            }
+        }
+        Ok(picked
+            .iter()
+            .map(|c| format!("#{:02X}{:02X}{:02X}", c[0] as u8, c[1] as u8, c[2] as u8))
+            .collect())
+    })
+    .await
+    .map_err(|e| format!("调色板任务失败: {e}"))?
+}
+
 /// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
 #[tauri::command]
 async fn export_wallpaper(
@@ -416,6 +475,7 @@ pub fn run() {
             save_collections,
             create_collection,
             reveal_item,
+            extract_palette,
             export_wallpaper,
             wallhaven_search
         ])
