@@ -37,6 +37,8 @@ export const useUiStore = defineStore('ui', {
     ratioFilter: null as string | null,
     /** 主色过滤（hex），null = 全部 */
     colorFilter: null as string | null,
+    /** 当前打开的集合（view = 'collection' 时有效） */
+    activeCollectionId: null as string | null,
   }),
   actions: {
     toast(kind: Toast['kind'], message: string) {
@@ -56,6 +58,7 @@ export const useUiStore = defineStore('ui', {
     goto(view: ViewId) {
       this.view = view;
       this.categoryFilter = null;
+      if (view !== 'collection') this.activeCollectionId = null;
       if (view !== 'wallpapers') this.search = '';
     },
     /** 重置全部分面 */

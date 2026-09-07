@@ -52,7 +52,15 @@ export type ViewId =
   | 'favorites'
   | 'downloads'
   | 'imports'
-  | 'recent';
+  | 'recent'
+  | 'collection';
+
+export interface Collection {
+  id: string;
+  name: string;
+  itemIds: string[];
+  createdAt: number;
+}
 
 export interface Toast {
   id: number;

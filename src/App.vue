@@ -17,10 +17,13 @@ import FavoritesView from './views/FavoritesView.vue';
 import DownloadsView from './views/DownloadsView.vue';
 import ImportsView from './views/ImportsView.vue';
 import RecentView from './views/RecentView.vue';
+import CollectionView from './views/CollectionView.vue';
+import { useCollectionsStore } from './stores/collections';
 
 const ui = useUiStore();
 const lib = useLibraryStore();
 const settings = useSettingsStore();
+const collections = useCollectionsStore();
 const { t } = useI18n();
 
 const VIEWS = {
@@ -31,6 +34,7 @@ const VIEWS = {
   downloads: DownloadsView,
   imports: ImportsView,
   recent: RecentView,
+  collection: CollectionView,
 } as const;
 
 const current = computed(() => VIEWS[ui.view]);
@@ -39,7 +43,7 @@ const dragging = ref(false);
 const IMAGE_EXT = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
 onMounted(async () => {
-  await Promise.all([settings.load(), lib.refresh(), ui.loadMonitors()]);
+  await Promise.all([settings.load(), lib.refresh(), ui.loadMonitors(), collections.load()]);
 
   try {
     const webview = getCurrentWebview();
@@ -74,7 +78,10 @@ onMounted(async () => {
       <Toolbar />
       <main class="content">
         <Transition name="view" mode="out-in">
-          <component :is="current" :key="ui.view + (ui.categoryFilter ?? '') + settings.locale" />
+          <component
+          :is="current"
+          :key="ui.view + (ui.categoryFilter ?? '') + (ui.activeCollectionId ?? '') + settings.locale"
+        />
         </Transition>
       </main>
     </div>

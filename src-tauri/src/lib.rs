@@ -1,3 +1,4 @@
+mod collections;
 mod download;
 mod generate;
 mod grok_imagine;
@@ -7,6 +8,7 @@ mod paths;
 mod settings;
 mod wallpaper;
 
+use collections::Collection;
 use models::{CmdResult, ImportReport, MonitorInfo, Settings, WallpaperItem};
 use serde::Serialize;
 use tauri::AppHandle;
@@ -117,6 +119,21 @@ async fn grok_imagine_status(app: AppHandle) -> CmdResult<GrokImagineStatus> {
 }
 
 #[tauri::command]
+fn list_collections(app: AppHandle) -> CmdResult<Vec<Collection>> {
+    Ok(collections::load(&app))
+}
+
+#[tauri::command]
+fn save_collections(app: AppHandle, collections: Vec<Collection>) -> CmdResult<()> {
+    collections::save(&app, &collections)
+}
+
+#[tauri::command]
+fn create_collection(name: String) -> CmdResult<Collection> {
+    Ok(collections::new_collection(name))
+}
+
+#[tauri::command]
 fn reveal_item(path: String) -> CmdResult<()> {
     tauri_plugin_opener::reveal_item_in_dir(std::path::Path::new(&path))
         .map_err(|e| format!("打开资源管理器失败: {e}"))
@@ -142,6 +159,9 @@ pub fn run() {
             test_connection,
             grok_imagine,
             grok_imagine_status,
+            list_collections,
+            save_collections,
+            create_collection,
             reveal_item
         ])
         .run(tauri::generate_context!())

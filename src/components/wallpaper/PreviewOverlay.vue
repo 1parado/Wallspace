@@ -2,16 +2,19 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useUiStore, CATEGORIES } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
+import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { assetUrl, revealItem } from '../../lib/api';
 import Icon from '../common/Icon.vue';
 
 const ui = useUiStore();
 const lib = useLibraryStore();
+const collections = useCollectionsStore();
 const { t } = useI18n();
 
 const item = computed(() => lib.byId(ui.previewId));
 
+const addToOpen = ref(false);
 const editingTitle = ref(false);
 const titleDraft = ref('');
 const confirmingDelete = ref(false);
@@ -48,6 +51,10 @@ async function doDelete() {
 function onKey(e: KeyboardEvent) {
   if (ui.previewId == null) return;
   if (e.key === 'Escape') {
+    if (addToOpen.value) {
+      addToOpen.value = false;
+      return;
+    }
     if (editingTitle.value) {
       editingTitle.value = false;
       return;
@@ -73,6 +80,31 @@ const sizeLabel = computed(() => {
   const mb = item.value.fileSize / (1024 * 1024);
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(item.value.fileSize / 1024)} KB`;
 });
+
+// —— 加入集合 ——
+function toggleAddTo() {
+  addToOpen.value = !addToOpen.value;
+}
+
+function inCollection(collectionId: string): boolean {
+  return !!item.value && collections.byId(collectionId)?.itemIds.includes(item.value.id) === true;
+}
+
+async function toggleInCollection(collectionId: string) {
+  if (!item.value) return;
+  if (inCollection(collectionId)) {
+    await collections.removeItem(collectionId, item.value.id);
+  } else {
+    await collections.addItem(collectionId, item.value.id);
+  }
+}
+
+async function createAndAdd() {
+  const name = prompt(t('collections.namePlaceholder'));
+  if (!name || !item.value) return;
+  const c = await collections.create(name);
+  if (c && item.value) await collections.addItem(c.id, item.value.id);
+}
 
 async function openInExplorer() {
   if (item.value) await revealItem(item.value.filePath);
@@ -145,6 +177,38 @@ function openSource() {
           >
             <Icon name="link" :size="16" />
           </button>
+          <div class="add-to">
+            <button
+              class="icon-btn"
+              :class="{ active: addToOpen }"
+              :title="t('collections.addTo')"
+              @click="toggleAddTo"
+            >
+              <Icon name="plus" :size="16" />
+            </button>
+            <div v-if="addToOpen" class="add-pop glass">
+              <button class="add-new" @click="createAndAdd">
+                <Icon name="plus" :size="13" />
+                {{ t('collections.new') }}
+              </button>
+              <template v-if="collections.collections.length">
+                <button
+                  v-for="c in collections.collections"
+                  :key="c.id"
+                  class="add-row"
+                  @click="toggleInCollection(c.id)"
+                >
+                  <Icon
+                    :name="inCollection(c.id) ? 'check' : 'folder'"
+                    :size="13"
+                  />
+                  <span class="add-name">{{ c.name }}</span>
+                  <span class="add-count">{{ c.itemIds.length }}</span>
+                </button>
+              </template>
+              <p v-else class="add-empty">{{ t('collections.noneYet') }}</p>
+            </div>
+          </div>
           <button class="icon-btn" :title="t('preview.folder')" @click="openInExplorer">
             <Icon name="external" :size="16" />
           </button>
@@ -372,6 +436,76 @@ function openSource() {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.add-to {
+  position: relative;
+}
+
+.add-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  z-index: 20;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.add-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--text-1);
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.add-new:hover {
+  background: var(--fill-hover);
+}
+
+.add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.add-row:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.add-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.add-count {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.add-empty {
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  text-align: center;
 }
 
 .icon-btn {

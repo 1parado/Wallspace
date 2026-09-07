@@ -1,5 +1,5 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import type { ImportReport, MonitorInfo, Settings, WallpaperItem } from '../types';
+import type { Collection, ImportReport, MonitorInfo, Settings, WallpaperItem } from '../types';
 
 export function assetUrl(path: string): string {
   return convertFileSrc(path);
@@ -91,4 +91,16 @@ export async function testConnection(
 
 export async function revealItem(path: string): Promise<void> {
   return invoke('reveal_item', { path });
+}
+
+export async function listCollections(): Promise<Collection[]> {
+  return invoke('list_collections');
+}
+
+export async function saveCollections(collections: Collection[]): Promise<void> {
+  return invoke('save_collections', { collections });
+}
+
+export async function createCollection(name: string): Promise<Collection> {
+  return invoke('create_collection', { name });
 }
