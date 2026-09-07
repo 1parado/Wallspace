@@ -154,6 +154,9 @@ function toggleTheme() {
 <style scoped>
 .toolbar {
   position: relative;
+  /* backdrop-filter 会形成独立层叠上下文，必须显式抬高，
+     否则 content 区（DOM 靠后 + 卡片 hover transform）会盖住下拉菜单 */
+  z-index: 50;
   height: var(--toolbar-h);
   flex-shrink: 0;
   display: grid;
