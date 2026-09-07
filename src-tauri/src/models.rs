@@ -93,6 +93,9 @@ pub struct Settings {
     /// 监视文件夹：新图片自动导入媒体库（None/空 = 关闭）
     #[serde(default)]
     pub watch_folder: Option<String>,
+    /// 监视文件夹（多目录）：非空时优先于 watch_folder
+    #[serde(default)]
+    pub watch_folders: Vec<String>,
 }
 
 fn default_locale() -> String {
@@ -147,6 +150,7 @@ impl Default for Settings {
             global_shortcuts: false,
             auto_backup_days: 0,
             watch_folder: None,
+            watch_folders: Vec::new(),
         }
     }
 }

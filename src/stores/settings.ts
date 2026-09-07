@@ -34,6 +34,7 @@ export const useSettingsStore = defineStore('settings', {
     globalShortcuts: false,
     autoBackupDays: 0,
     watchFolder: '',
+    watchFolders: [] as string[],
     autoCheckUpdates: true,
   }),
   getters: {
@@ -48,6 +49,10 @@ export const useSettingsStore = defineStore('settings', {
         Object.assign(this, await api.getSettings());
       } catch {
         /* 使用默认值 */
+      }
+      // 旧版单目录 → 多目录迁移（保留旧字段供后端兼容回退）
+      if (this.watchFolder && (!this.watchFolders || !this.watchFolders.length)) {
+        this.watchFolders = [this.watchFolder];
       }
       const saved = localStorage.getItem('wallspace.sidebarExpanded');
       if (saved != null) this.sidebarExpanded = saved === '1';

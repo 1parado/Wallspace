@@ -333,6 +333,8 @@ export default {
   'settings.watchFolderNone': 'No folder selected',
   'settings.watchFolderPick': 'Browse…',
   'settings.watchFolderClear': 'Clear',
+  'settings.watchFolderAdd': 'Add folder',
+  'settings.watchFolderRemove': 'Remove',
   'settings.watchFolderHint': 'Images dropped into this folder are imported automatically (checked every ~30 s, up to 20 per pass). Use Auto-organize to fill in categories and tags. Applied after saving.',
   'settings.about': 'About',
   'settings.currentVersion': 'Current version',

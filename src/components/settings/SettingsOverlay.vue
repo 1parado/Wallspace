@@ -109,9 +109,17 @@ async function runImportBackup() {
 function pickWatchFolder() {
   openDialog({ directory: true, title: t('settings.watchFolderPick') }).then((picked) => {
     if (typeof picked === 'string' && picked) {
-      settings.watchFolder = picked;
+      const folders = settings.watchFolders ?? [];
+      if (!folders.includes(picked)) {
+        settings.watchFolders = [...folders, picked];
+      }
+      settings.watchFolder = '';
     }
   });
+}
+
+function removeWatchFolder(i: number) {
+  settings.watchFolders = (settings.watchFolders ?? []).filter((_, idx) => idx !== i);
 }
 
 async function runCheckUpdate() {
@@ -423,27 +431,29 @@ function saveAndClose() {
 
         <section>
           <p class="group-label">{{ t('settings.watchSection') }}</p>
-          <label class="field">
-            <span>{{ t('settings.watchFolder') }}</span>
-            <div class="watch-row">
+          <div class="watch-list">
+            <div
+              v-for="(f, fi) in settings.watchFolders ?? []"
+              :key="f"
+              class="watch-row"
+            >
+              <input :value="f" class="text-field" readonly />
+              <button class="backup-btn" @click="removeWatchFolder(fi)">
+                {{ t('settings.watchFolderRemove') }}
+              </button>
+            </div>
+            <div v-if="!(settings.watchFolders ?? []).length" class="watch-row">
               <input
-                :value="settings.watchFolder ?? ''"
+                :value="''"
                 class="text-field"
                 readonly
                 :placeholder="t('settings.watchFolderNone')"
               />
-              <button class="backup-btn" :disabled="backingUp" @click="pickWatchFolder">
-                {{ t('settings.watchFolderPick') }}
-              </button>
-              <button
-                v-if="settings.watchFolder"
-                class="backup-btn"
-                @click="settings.watchFolder = ''"
-              >
-                {{ t('settings.watchFolderClear') }}
-              </button>
             </div>
-          </label>
+            <button class="backup-btn" @click="pickWatchFolder">
+              {{ t('settings.watchFolderAdd') }}
+            </button>
+          </div>
           <p class="privacy">{{ t('settings.watchFolderHint') }}</p>
         </section>
 
@@ -562,6 +572,17 @@ function saveAndClose() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.watch-list .backup-btn {
+  align-self: flex-start;
 }
 
 .watch-row .text-field {

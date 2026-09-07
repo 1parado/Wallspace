@@ -335,6 +335,8 @@ export default {
   'settings.watchFolderNone': '未选择文件夹',
   'settings.watchFolderPick': '浏览…',
   'settings.watchFolderClear': '清除',
+  'settings.watchFolderAdd': '添加文件夹',
+  'settings.watchFolderRemove': '移除',
   'settings.watchFolderHint': '放入该文件夹的图片会自动导入媒体库（约每 30 秒检查一次，单次最多 20 张）；分类和标签可用「一键智能整理」补全。保存后生效。',
   'settings.about': '关于',
   'settings.currentVersion': '当前版本',
