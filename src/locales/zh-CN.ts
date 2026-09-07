@@ -236,6 +236,7 @@ export default {
   'preview.folder': '在文件夹中显示',
   'preview.link': '打开来源链接',
   'preview.close': '关闭',
+  'preview.zoomReset': '重置缩放（0）',
   'preview.fromLink': '来自链接',
   'preview.imported': '本地导入',
   'preview.ai': 'AI 生成',

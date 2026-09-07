@@ -234,6 +234,7 @@ export default {
   'preview.folder': 'Show in folder',
   'preview.link': 'Open source link',
   'preview.close': 'Close',
+  'preview.zoomReset': 'Reset zoom (0)',
   'preview.fromLink': 'From link',
   'preview.imported': 'Imported',
   'preview.ai': 'AI · generated',

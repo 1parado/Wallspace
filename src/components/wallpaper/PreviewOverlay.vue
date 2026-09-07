@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUiStore, CATEGORIES } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
@@ -32,6 +32,104 @@ function goPrev() {
 function goNext() {
   if (hasNext.value) ui.previewId = navIds.value[navIdx.value + 1];
 }
+
+// —— 缩放与平移（滚轮缩放 / 拖拽平移 / 双击切换 / +−0 快捷键） ——
+const stageEl = ref<HTMLElement | null>(null);
+const imgEl = ref<HTMLImageElement | null>(null);
+const zoom = ref(1);
+const panX = ref(0);
+const panY = ref(0);
+const dragging = ref(false);
+
+/** 将平移量限制在「放大后图片超出舞台的范围」内，避免拖飞 */
+function clampPan() {
+  const stage = stageEl.value?.getBoundingClientRect();
+  const img = imgEl.value?.getBoundingClientRect();
+  if (!stage || !img) return;
+  const lx = Math.max(0, (img.width - stage.width) / 2);
+  const ly = Math.max(0, (img.height - stage.height) / 2);
+  panX.value = Math.min(lx, Math.max(-lx, panX.value));
+  panY.value = Math.min(ly, Math.max(-ly, panY.value));
+}
+
+/**
+ * 应用缩放并保持舞台坐标 (cx, cy) 处的图像点不动（cx/cy 相对舞台中心）。
+ * 变换为 translate(pan) scale(z)：p = pan + z·x，固定 x 解得 pan'。
+ */
+function applyZoom(next: number, cx = 0, cy = 0) {
+  const old = zoom.value;
+  const z = Math.min(8, Math.max(1, next));
+  if (z === old) return;
+  if (z === 1) {
+    zoom.value = 1;
+    panX.value = 0;
+    panY.value = 0;
+    return;
+  }
+  panX.value = cx * (1 - z / old) + panX.value * (z / old);
+  panY.value = cy * (1 - z / old) + panY.value * (z / old);
+  zoom.value = z;
+  void nextTick(clampPan);
+}
+
+function onWheel(e: WheelEvent) {
+  const stage = stageEl.value?.getBoundingClientRect();
+  if (!stage) return;
+  const cx = e.clientX - stage.left - stage.width / 2;
+  const cy = e.clientY - stage.top - stage.height / 2;
+  applyZoom(zoom.value * (e.deltaY < 0 ? 1.18 : 1 / 1.18), cx, cy);
+}
+
+let lastX = 0;
+let lastY = 0;
+
+function onPointerDown(e: PointerEvent) {
+  if (zoom.value <= 1) return;
+  dragging.value = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  (e.target as HTMLElement).setPointerCapture(e.pointerId);
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!dragging.value) return;
+  panX.value += e.clientX - lastX;
+  panY.value += e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  clampPan();
+}
+
+function onPointerUp(e: PointerEvent) {
+  dragging.value = false;
+  const el = e.target as HTMLElement;
+  if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
+}
+
+function onDblClick() {
+  if (zoom.value > 1) applyZoom(1);
+  else applyZoom(2.5);
+}
+
+function resetZoom() {
+  applyZoom(1);
+}
+
+const imgStyle = computed(() => ({
+  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+  cursor: zoom.value > 1 ? (dragging.value ? 'grabbing' : 'grab') : 'zoom-in',
+}));
+
+// 切换图片 / 关闭预览时重置缩放状态
+watch(
+  () => ui.previewId,
+  () => {
+    zoom.value = 1;
+    panX.value = 0;
+    panY.value = 0;
+    dragging.value = false;
+  }
+);
 
 const addToOpen = ref(false);
 const editingTitle = ref(false);
@@ -104,6 +202,19 @@ function onKey(e: KeyboardEvent) {
   }
   if (e.key.toLowerCase() === 'f') {
     toggleFav();
+    return;
+  }
+  // +/−/0 缩放快捷键
+  if (e.key === '+' || e.key === '=') {
+    applyZoom(zoom.value * 1.25);
+    return;
+  }
+  if (e.key === '-' || e.key === '_') {
+    applyZoom(zoom.value / 1.25);
+    return;
+  }
+  if (e.key === '0') {
+    applyZoom(1);
   }
 }
 
@@ -238,8 +349,19 @@ function openSource() {
         <Icon name="x" :size="16" />
       </button>
 
-      <div class="stage">
-        <img :src="assetUrl(item.filePath)" draggable="false" @dblclick="openInExplorer" />
+      <div ref="stageEl" class="stage" @wheel.prevent="onWheel">
+        <img
+          ref="imgEl"
+          :src="assetUrl(item.filePath)"
+          draggable="false"
+          :class="{ dragging }"
+          :style="imgStyle"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="onPointerUp"
+          @dblclick="onDblClick"
+        />
 
         <!-- 上一张 / 下一张（点击或 ←/→） -->
         <button
@@ -261,6 +383,14 @@ function openSource() {
         <span v-if="navIds.length > 1" class="nav-counter">
           {{ navIdx + 1 }} / {{ navIds.length }}
         </span>
+        <button
+          v-if="zoom > 1"
+          class="zoom-chip"
+          :title="t('preview.zoomReset')"
+          @click="resetZoom"
+        >
+          {{ Math.round(zoom * 100) }}%
+        </button>
       </div>
 
       <div class="bar">
@@ -555,6 +685,34 @@ function openSource() {
   max-width: 100%;
   max-height: min(72vh, 780px);
   object-fit: contain;
+  transition: transform 0.16s var(--ease-out);
+  will-change: transform;
+  user-select: none;
+}
+
+.stage img.dragging {
+  transition: none;
+}
+
+/* 缩放比例指示（点击重置） */
+.zoom-chip {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(15, 15, 18, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 100px;
+  padding: 3px 12px;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.zoom-chip:hover {
+  background: rgba(15, 15, 18, 0.65);
 }
 
 .bar {
