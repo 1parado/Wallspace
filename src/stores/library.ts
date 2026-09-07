@@ -21,6 +21,18 @@ export const useLibraryStore = defineStore('library', {
     favorites(): WallpaperItem[] {
       return this.items.filter((i) => i.favorite);
     },
+    /** 最近一次应用的条目 id（托盘/卡片「使用中」标记用） */
+    currentItemId(state): string | null {
+      let best: string | null = null;
+      let bestTime = 0;
+      for (const i of state.items) {
+        if (i.appliedAt && i.appliedAt > bestTime) {
+          bestTime = i.appliedAt;
+          best = i.id;
+        }
+      }
+      return best;
+    },
     recentApplied(): WallpaperItem[] {
       return this.items
         .filter((i) => i.appliedAt)

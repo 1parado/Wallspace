@@ -53,6 +53,12 @@ const metaLabel = computed(
       <div v-if="failed" class="broken"><Icon name="image" :size="20" /></div>
     </div>
 
+    <!-- 「使用中」徽章：当前正在显示的壁纸 -->
+    <span v-if="lib.currentItemId === item.id" class="current-badge">
+      <Icon name="monitor" :size="11" />
+      {{ t('card.inUse') }}
+    </span>
+
     <!-- 常驻半透明收藏心（右上角，始终可见） -->
     <button
       class="round-btn heart persistent"
@@ -220,6 +226,24 @@ const metaLabel = computed(
   right: 10px;
   z-index: 2;
   opacity: 0.85;
+}
+
+.current-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 620;
+  color: #fff;
+  background: rgba(20, 120, 70, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .apply-btn {

@@ -214,10 +214,12 @@ fn apply(app: &AppHandle, cfg: &Settings, item: &WallpaperItem) -> CmdResult<()>
         for m in wallpaper::list_monitors_impl()? {
             wallpaper::adapt_and_apply(app, item, Some(&m.id))?;
         }
-        Ok(())
     } else {
-        wallpaper::adapt_and_apply(app, item, None)
+        wallpaper::adapt_and_apply(app, item, None)?;
     }
+    // 更新托盘上的当前壁纸标题
+    crate::tray::sync_current_title(app, &item.title);
+    Ok(())
 }
 
 fn load_state(app: &AppHandle) -> SwitchState {

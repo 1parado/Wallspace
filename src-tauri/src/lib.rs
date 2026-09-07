@@ -80,11 +80,16 @@ async fn apply_wallpaper(app: AppHandle, id: String, display: Option<String>) ->
         .into_iter()
         .find(|i| i.id == id)
         .ok_or_else(|| "条目不存在".to_string())?;
+    let title = item.title.clone();
+    let app2 = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        wallpaper::adapt_and_apply(&app, &item, display.as_deref())
+        wallpaper::adapt_and_apply(&app2, &item, display.as_deref())
     })
     .await
-    .map_err(|e| format!("任务执行失败: {e}"))?
+    .map_err(|e| format!("任务执行失败: {e}"))??;
+    // 更新托盘上的当前壁纸标题
+    crate::tray::sync_current_title(&app, &title);
+    Ok(())
 }
 
 #[tauri::command]

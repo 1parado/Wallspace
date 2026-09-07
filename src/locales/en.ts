@@ -31,6 +31,7 @@ export default {
   'cat.abstract': 'Abstract',
   'cat.cinematic': 'Cinematic',
   'cat.uncategorized': 'Uncategorized',
+  'card.inUse': 'In use',
   'cat.minimal': 'Minimal',
 
   'facets.category': 'Category',

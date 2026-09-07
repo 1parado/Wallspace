@@ -33,6 +33,7 @@ export default {
   'cat.abstract': '抽象',
   'cat.cinematic': '电影感',
   'cat.uncategorized': '未分类',
+  'card.inUse': '使用中',
   'cat.minimal': '极简',
 
   'facets.category': '分类',
