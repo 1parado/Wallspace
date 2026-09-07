@@ -6,6 +6,7 @@ import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
 import { assetUrl } from '../lib/api';
+import { sortItems } from '../lib/sortItems';
 import WallpaperCard from '../components/wallpaper/WallpaperCard.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 import Icon from '../components/common/Icon.vue';
@@ -24,6 +25,39 @@ const items = computed(() => {
     .map((id) => lib.byId(id))
     .filter((i): i is NonNullable<typeof i> => !!i);
 });
+
+// —— 排序 + 随机换一张 ——
+type CollSort = 'custom' | 'newest' | 'oldest' | 'name' | 'resolution' | 'random';
+const collSort = ref<CollSort>('custom');
+const sortSeed = ref(0);
+
+const COLL_SORTS = [
+  { id: 'custom', labelKey: 'facets.sortCustom' },
+  { id: 'newest', labelKey: 'facets.sortNewest' },
+  { id: 'oldest', labelKey: 'facets.sortOldest' },
+  { id: 'name', labelKey: 'facets.sortName' },
+  { id: 'resolution', labelKey: 'facets.sortResolution' },
+  { id: 'random', labelKey: 'facets.sortRandom' },
+] as const;
+
+/** 展示顺序：custom = 集合原始顺序，其余走共享排序工具 */
+const displayed = computed(() => sortItems(items.value, collSort.value, sortSeed.value));
+
+function setCollSort(m: CollSort) {
+  // 重复点「随机」= 重新洗牌
+  if (m === 'random' && collSort.value === 'random') {
+    sortSeed.value = Date.now();
+    return;
+  }
+  collSort.value = m;
+}
+
+/** 随机换一张：从集合当前展示顺序中随机挑一张立即应用 */
+async function applyRandom() {
+  if (!displayed.value.length || lib.applyingId) return;
+  const pick = displayed.value[Math.floor(Math.random() * displayed.value.length)];
+  await lib.apply(pick.id);
+}
 
 // —— 拖拽排序 ——
 const dragIndex = ref<number | null>(null);
@@ -47,8 +81,8 @@ async function onDrop(to: number) {
   onDragEnd();
   if (from == null || from === to || !collection.value) return;
   const ids = [...collection.value.itemIds];
-  // from/to 都按「过滤后条目在 itemIds 中的原始下标」换算，避免失效条目错位
-  const liveIds = items.value.map((i) => i.id);
+  // from/to 都按「展示列表条目在 itemIds 中的原始下标」换算，避免失效条目错位
+  const liveIds = displayed.value.map((i) => i.id);
   const moved = liveIds[from];
   const target = liveIds[to];
   const fromRaw = ids.indexOf(moved);
@@ -108,7 +142,9 @@ async function quickApply() {
       <span class="count-label">
         {{ t('collections.itemCount', { n: items.length }) }}
       </span>
-      <span v-if="items.length > 1 && !managing" class="hint">{{ t('collections.reorderHint') }}</span>
+      <span v-if="items.length > 1 && !managing && collSort === 'custom'" class="hint">
+        {{ t('collections.reorderHint') }}
+      </span>
       <div class="head-actions">
         <button
           v-if="managing && selectedIds.size"
@@ -135,9 +171,33 @@ async function quickApply() {
       </div>
     </div>
 
-    <div v-if="items.length" class="grid" @click.capture="ui.previewIds = items.map((i) => i.id)">
+    <!-- 结果栏：排序 + 随机换一张 -->
+    <div v-if="items.length" class="grid-bar">
+      <span class="facet-label">{{ t('facets.sort') }}</span>
+      <button
+        v-for="s in COLL_SORTS"
+        :key="s.id"
+        class="chip"
+        :class="{ active: collSort === s.id }"
+        @click="setCollSort(s.id)"
+      >
+        {{ t(s.labelKey) }}
+      </button>
+      <span class="bar-spacer" />
+      <button
+        class="chip shuffle-apply"
+        :disabled="!!lib.applyingId || !displayed.length"
+        :title="t('facets.randomApplyTip')"
+        @click="applyRandom"
+      >
+        <Icon name="shuffle" :size="13" />
+        {{ lib.applyingId ? t('preview.applying') : t('facets.randomApply') }}
+      </button>
+    </div>
+
+    <div v-if="displayed.length" class="grid" @click.capture="ui.previewIds = displayed.map((i) => i.id)">
       <div
-        v-for="(item, i) in items"
+        v-for="(item, i) in displayed"
         :key="item.id"
         class="cell"
         :class="{
@@ -146,7 +206,7 @@ async function quickApply() {
           selectable: managing,
           selected: managing && selectedIds.has(item.id),
         }"
-        :draggable="!managing"
+        :draggable="!managing && collSort === 'custom'"
         @dragstart="onDragStart(i)"
         @dragover.prevent="onDragOver(i)"
         @drop.prevent="onDrop(i)"
@@ -288,6 +348,63 @@ async function quickApply() {
   margin-left: auto;
   font-size: 12px;
   color: var(--text-3);
+}
+
+.grid-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bar-spacer {
+  flex: 1;
+}
+
+.facet-label {
+  font-size: 11.5px;
+  font-weight: 560;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-right: 2px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-3);
+  border: 1px solid var(--stroke);
+  border-radius: 100px;
+  padding: 5px 13px;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.chip:hover {
+  color: var(--text-1);
+  border-color: var(--stroke-strong);
+}
+
+.chip.active {
+  color: var(--text-1);
+  background: var(--fill-active);
+  border-color: var(--stroke-strong);
+}
+
+.shuffle-apply {
+  color: var(--text-1);
+  background: var(--fill-subtle);
+}
+
+.shuffle-apply:hover:not(:disabled) {
+  background: var(--fill-hover);
+  border-color: var(--stroke-strong);
+}
+
+.shuffle-apply:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .grid {

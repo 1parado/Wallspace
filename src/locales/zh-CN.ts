@@ -60,6 +60,7 @@ export default {
   'facets.allSub': '全部',
   'facets.resultCount': '共 {n} 张',
   'facets.sort': '排序',
+  'facets.sortCustom': '自定义',
   'facets.sortNewest': '最新',
   'facets.sortOldest': '最早',
   'facets.sortName': '名称',

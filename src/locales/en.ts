@@ -58,6 +58,7 @@ export default {
   'facets.allSub': 'All',
   'facets.resultCount': '{n} wallpapers',
   'facets.sort': 'Sort',
+  'facets.sortCustom': 'Custom order',
   'facets.sortNewest': 'Newest',
   'facets.sortOldest': 'Oldest',
   'facets.sortName': 'Name',
