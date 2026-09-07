@@ -212,8 +212,10 @@ pub fn delete_item(app: &AppHandle, id: &str) -> CmdResult<()> {
         Ok(())
     })?;
 
-    // 删除原图与适配缓存
-    let _ = fs::remove_file(Path::new(&item.file_path));
+    // 原图移入系统回收站（失败时回退为直接删除）；适配缓存为派生产物，直接清理
+    if trash::delete(Path::new(&item.file_path)).is_err() {
+        let _ = fs::remove_file(Path::new(&item.file_path));
+    }
     if let Ok(root) = paths::data_root(app) {
         if let Ok(entries) = fs::read_dir(root.join("adapted")) {
             for entry in entries.flatten() {
