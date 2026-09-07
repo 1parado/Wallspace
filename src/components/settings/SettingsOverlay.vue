@@ -71,6 +71,11 @@ function saveAndClose() {
             <input v-model="settings.apiModel" class="text-field" placeholder="gpt-image-1" spellcheck="false" />
           </label>
           <label class="field">
+            <span>{{ t('settings.classifyModel') }}</span>
+            <input v-model="settings.classifyModel" class="text-field" placeholder="gpt-4o-mini" spellcheck="false" />
+          </label>
+          <p class="privacy">{{ t('settings.classifyHint') }}</p>
+          <label class="field">
             <span>{{ t('settings.defaultSize') }}</span>
             <input v-model="settings.defaultSize" class="text-field" placeholder="1536x1024" spellcheck="false" />
           </label>

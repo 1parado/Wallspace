@@ -54,6 +54,9 @@ pub struct Settings {
     pub theme: String, // "system" | "dark" | "light"
     #[serde(default)]
     pub sidebar_hidden: bool,
+    /// 智能打标用的轻量文本模型（chat/completions）；空 = 仅关键词规则
+    #[serde(default)]
+    pub classify_model: String,
 }
 
 fn default_locale() -> String {
@@ -75,6 +78,7 @@ impl Default for Settings {
             locale: default_locale(),
             theme: default_theme(),
             sidebar_hidden: false,
+            classify_model: String::new(),
         }
     }
 }

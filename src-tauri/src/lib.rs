@@ -1,3 +1,4 @@
+mod auto_classify;
 mod collections;
 mod download;
 mod generate;

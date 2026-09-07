@@ -1,3 +1,4 @@
+use crate::auto_classify;
 use crate::library::{self, ExtraMeta};
 use crate::models::{CmdResult, WallpaperItem};
 use crate::settings::normalize_base;
@@ -116,17 +117,37 @@ pub async fn generate(
     };
 
     let title = short_title(&prompt);
+    // 智能打标：配置了轻量文本模型时，让 LLM 给出分类（可含子分类）与标签；
+    // 失败静默回退到关键词规则结果
+    let mut merged_tags = tags;
+    let mut final_category = category;
+    if !cfg.classify_model.trim().is_empty() {
+        if let Ok(llm) =
+            auto_classify::classify(&cfg.api_base_url, &cfg.api_key, &cfg.classify_model, &prompt)
+                .await
+        {
+            if final_category.is_none() && llm.category.is_some() {
+                final_category = llm.category;
+            }
+            for t in llm.tags {
+                if !merged_tags.contains(&t) {
+                    merged_tags.push(t);
+                }
+            }
+            merged_tags.truncate(8);
+        }
+    }
     library::add_image_bytes(
         &app,
         bytes,
         "ai",
         title,
-        category,
+        final_category,
         ExtraMeta {
             prompt: Some(prompt),
             model: Some(cfg.api_model.clone()),
             origin_url: None,
-            tags,
+            tags: merged_tags,
         },
     )
 }

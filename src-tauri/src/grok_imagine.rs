@@ -8,6 +8,7 @@
 //!   建立 wss://grok.com/ws/imagine/listen，先发 update_session，350ms 后发 input_text
 //! - 账号轮询；usage_pool_exhausted / usage_limit_reached / concurrency_limit 标记耗尽
 
+use crate::auto_classify;
 use crate::library::{self, ExtraMeta};
 use crate::models::{now_ms, CmdResult, WallpaperItem};
 use base64::Engine;
@@ -568,17 +569,41 @@ pub async fn generate(
             }
             match best {
                 Some(bytes) => {
+                    // 智能打标：LLM 结果与关键词规则合并；失败回退规则结果
+                    let mut merged_tags = tags;
+                    let mut final_category = category;
+                    let cfg = crate::settings::load(app);
+                    if !cfg.classify_model.trim().is_empty() {
+                        if let Ok(llm) = auto_classify::classify(
+                            &cfg.api_base_url,
+                            &cfg.api_key,
+                            &cfg.classify_model,
+                            &prompt,
+                        )
+                        .await
+                        {
+                            if final_category.is_none() && llm.category.is_some() {
+                                final_category = llm.category;
+                            }
+                            for t in llm.tags {
+                                if !merged_tags.contains(&t) {
+                                    merged_tags.push(t);
+                                }
+                            }
+                            merged_tags.truncate(8);
+                        }
+                    }
                     return library::add_image_bytes(
                         app,
                         bytes,
                         "ai",
                         short_title(&prompt),
-                        category,
+                        final_category,
                         ExtraMeta {
                             prompt: Some(prompt),
                             model: Some(model),
                             origin_url: None,
-                            tags,
+                            tags: merged_tags,
                         },
                     );
                 }

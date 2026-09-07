@@ -17,7 +17,7 @@ const { t } = useI18n();
 const prompt = ref('');
 const LAST_CAT_KEY = 'wallspace.lastCategory';
 const remembered = localStorage.getItem(LAST_CAT_KEY);
-const category = ref<string>(remembered ?? 'Cinematic');
+const category = ref<string | null>(remembered ?? 'Cinematic');
 /** 用户手动改过分类后，不再跟随 prompt 自动预选 */
 const categoryTouched = ref(remembered != null);
 
@@ -28,10 +28,10 @@ watch(prompt, (p) => {
   if (guess) category.value = guess;
 });
 
-function pickCategory(c: string) {
+function pickCategory(c: string | null) {
   category.value = c;
   categoryTouched.value = true;
-  localStorage.setItem(LAST_CAT_KEY, c);
+  if (c) localStorage.setItem(LAST_CAT_KEY, c);
 }
 
 const autoSuggested = computed(
@@ -189,6 +189,9 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
             <span v-if="autoSuggested" class="auto-badge">{{ t('create.autoSuggested') }}</span>
           </p>
           <div class="segmented wrap">
+            <button :class="{ active: category === null }" @click="pickCategory(null)">
+              {{ t('create.auto') }}
+            </button>
             <button
               v-for="c in ui.categories"
               :key="c"
