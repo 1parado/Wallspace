@@ -139,11 +139,36 @@ function onCellClickCapture(id: string, e: MouseEvent) {
 }
 
 // —— 封面与快速应用 ——
-const cover = computed(() => items.value[0] ?? null);
+/** 自定义封面优先，未设置或已失效时回退到集合首图 */
+const cover = computed(() => {
+  const cid = collection.value?.coverItemId;
+  if (cid) {
+    const custom = lib.byId(cid);
+    if (custom) return custom;
+  }
+  return items.value[0] ?? null;
+});
 
 async function quickApply() {
   const first = items.value[0];
   if (first && lib.applyingId !== first.id) await lib.apply(first.id);
+}
+
+// —— 右键设为封面 ——
+const coverCtx = ref<{ x: number; y: number; itemId: string } | null>(null);
+
+function openCoverCtx(e: MouseEvent, itemId: string) {
+  coverCtx.value = { x: Math.min(e.clientX, window.innerWidth - 160), y: e.clientY, itemId };
+}
+
+function closeCoverCtx() {
+  coverCtx.value = null;
+}
+
+function ctxSetCover() {
+  const ctx = coverCtx.value;
+  closeCoverCtx();
+  if (ctx && collection.value) collections.setCover(collection.value.id, ctx.itemId);
 }
 </script>
 
@@ -213,6 +238,7 @@ async function quickApply() {
         @drop.prevent="onDrop(i)"
         @dragend="onDragEnd"
         @click.capture="onCellClickCapture(item.id, $event)"
+        @contextmenu.prevent="openCoverCtx($event, item.id)"
       >
         <span
           v-if="managing"
@@ -232,6 +258,21 @@ async function quickApply() {
       :action-label="t('nav.wallpapers')"
       @action="ui.goto('wallpapers')"
     />
+
+    <!-- 右键设为封面 -->
+    <template v-if="coverCtx">
+      <div class="ctx-backdrop" @click="closeCoverCtx" @contextmenu.prevent="closeCoverCtx" />
+      <div class="ctx-menu glass" :style="{ left: coverCtx.x + 'px', top: coverCtx.y + 'px' }">
+        <button @click="ctxSetCover">
+          <Icon name="image" :size="13" />
+          {{
+            collection?.coverItemId === coverCtx.itemId
+              ? t('collections.clearCover')
+              : t('collections.setCover')
+          }}
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -240,6 +281,40 @@ async function quickApply() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+}
+
+/* 右键设为封面 */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 91;
+  min-width: 140px;
+  padding: 5px;
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+}
+
+.ctx-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-1);
+  text-align: left;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.ctx-menu button:hover {
+  background: var(--fill-hover);
 }
 
 .head {

@@ -85,5 +85,26 @@ export const useCollectionsStore = defineStore('collections', {
       c.itemIds = newItemIds;
       await this.persist();
     },
+    /** 设为封面：再次设置同一张时取消（恢复默认首图） */
+    async setCover(collectionId: string, itemId: string) {
+      const ui = useUiStore();
+      const { t } = useI18n();
+      const c = this.byId(collectionId);
+      if (!c) return;
+      c.coverItemId = c.coverItemId === itemId ? null : itemId;
+      try {
+        await this.persist();
+        ui.toast('success', t('toast.coverUpdated'));
+      } catch (e) {
+        ui.toast('error', String(e));
+      }
+    },
+    /** 恢复默认封面（集合首图） */
+    async clearCover(collectionId: string) {
+      const c = this.byId(collectionId);
+      if (!c) return;
+      c.coverItemId = null;
+      await this.persist();
+    },
   },
 });

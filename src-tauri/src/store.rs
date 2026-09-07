@@ -43,7 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_items_favorite ON items(favorite);
 CREATE TABLE IF NOT EXISTS collections (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  cover_item_id TEXT
 );
 CREATE TABLE IF NOT EXISTS collection_items (
   collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
@@ -69,6 +70,9 @@ pub fn init(app: &AppHandle) -> CmdResult<()> {
     conn.pragma_update(None, "foreign_keys", "ON").ok();
     conn.execute_batch(SCHEMA)
         .map_err(|e| format!("初始化数据库失败: {e}"))?;
+    // 旧库升级：collections 增加 cover_item_id 列（已存在则忽略报错）
+    conn.execute("ALTER TABLE collections ADD COLUMN cover_item_id TEXT", [])
+        .ok();
     migrate_legacy(app, &conn)?;
     app.manage(Db(Mutex::new(conn)));
     Ok(())

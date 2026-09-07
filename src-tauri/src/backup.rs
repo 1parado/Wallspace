@@ -181,6 +181,7 @@ pub fn import(app: &AppHandle, zip_path: &Path) -> CmdResult<ImportOutcome> {
             id: col.id.clone(),
             name: col.name.clone(),
             created_at: col.created_at,
+            cover_item_id: col.cover_item_id.clone(),
             item_ids: col
                 .item_ids
                 .iter()

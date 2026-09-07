@@ -15,11 +15,14 @@ pub struct Collection {
     pub name: String,
     pub item_ids: Vec<String>,
     pub created_at: u64,
+    /// 自定义封面条目 id；空则前端回退到集合首图
+    #[serde(default)]
+    pub cover_item_id: Option<String>,
 }
 
 pub fn load(app: &AppHandle) -> Vec<Collection> {
     store::with(app, |c| {
-        let mut stmt = c.prepare("SELECT id, name, created_at FROM collections")?;
+        let mut stmt = c.prepare("SELECT id, name, created_at, cover_item_id FROM collections")?;
         let mut cols: Vec<Collection> = stmt
             .query_map([], |r| {
                 Ok(Collection {
@@ -27,6 +30,7 @@ pub fn load(app: &AppHandle) -> Vec<Collection> {
                     name: r.get(1)?,
                     item_ids: Vec::new(),
                     created_at: r.get(2)?,
+                    cover_item_id: r.get(3)?,
                 })
             })?
             .collect::<Result<_, _>>()?;
@@ -61,8 +65,8 @@ pub fn save(app: &AppHandle, collections: &[Collection]) -> CmdResult<()> {
         tx.execute("DELETE FROM collections", [])?;
         for col in collections {
             tx.execute(
-                "INSERT INTO collections (id, name, created_at) VALUES (?1,?2,?3)",
-                rusqlite::params![col.id, col.name, col.created_at],
+                "INSERT INTO collections (id, name, created_at, cover_item_id) VALUES (?1,?2,?3,?4)",
+                rusqlite::params![col.id, col.name, col.created_at, col.cover_item_id],
             )?;
             for (i, iid) in col.item_ids.iter().enumerate() {
                 tx.execute(
@@ -82,5 +86,6 @@ pub fn new_collection(name: String) -> Collection {
         name: name.trim().to_string(),
         item_ids: Vec::new(),
         created_at: now_ms(),
+        cover_item_id: None,
     }
 }

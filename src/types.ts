@@ -89,6 +89,8 @@ export interface Collection {
   name: string;
   itemIds: string[];
   createdAt: number;
+  /** 自定义封面条目 id；空则回退到集合首图 */
+  coverItemId?: string | null;
 }
 
 export interface Toast {

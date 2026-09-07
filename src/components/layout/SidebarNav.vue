@@ -6,6 +6,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../../lib/categoryTree';
+import { assetUrl } from '../../lib/api';
 import { open } from '@tauri-apps/plugin-dialog';
 import Icon from '../common/Icon.vue';
 
@@ -77,12 +78,18 @@ function openCtx(e: MouseEvent, id: string) {
   ctxMenu.value = { x: Math.min(e.clientX, window.innerWidth - 150), y: e.clientY, id };
 }
 
-function ctxAction(action: 'rename' | 'delete') {
+function ctxAction(action: 'rename' | 'delete' | 'clearCover') {
   const id = ctxMenu.value?.id;
   ctxMenu.value = null;
   if (!id) return;
   if (action === 'rename') startRename(id);
+  else if (action === 'clearCover') collections.clearCover(id);
   else collections.remove(id);
+}
+
+/** 集合自定义封面（未设置或已失效时返回 null，显示默认文件夹图标） */
+function coverItem(c: { coverItemId?: string | null }) {
+  return (c.coverItemId && lib.byId(c.coverItemId)) || null;
 }
 
 // —— 集合（用户驱动）——
@@ -249,7 +256,13 @@ async function importOwn() {
           :title="c.name"
           @click="openCollection(c.id)"
         >
-          <Icon name="folder" :size="16" />
+          <img
+            v-if="coverItem(c)"
+            class="coll-cover"
+            :src="assetUrl(coverItem(c)!.filePath)"
+            alt=""
+          />
+          <Icon v-else name="folder" :size="16" />
           <span
             class="nav-text coll-name"
             :title="c.name"
@@ -316,6 +329,12 @@ async function importOwn() {
     >
       <button @click="ctxAction('rename')">
         <Icon name="pencil" :size="13" />{{ t('collections.rename') }}
+      </button>
+      <button
+        v-if="collections.byId(ctxMenu.id)?.coverItemId"
+        @click="ctxAction('clearCover')"
+      >
+        <Icon name="image" :size="13" />{{ t('collections.clearCover') }}
       </button>
       <button class="danger" @click="ctxAction('delete')">
         <Icon name="trash" :size="13" />{{ t('collections.delete') }}
@@ -520,6 +539,16 @@ async function importOwn() {
 .nav-item.active {
   color: var(--text-1);
   background: var(--fill-active);
+}
+
+/* 集合封面缩略图 */
+.coll-cover {
+  width: 16px;
+  height: 16px;
+  border-radius: 4.5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px var(--stroke);
 }
 
 .count {
