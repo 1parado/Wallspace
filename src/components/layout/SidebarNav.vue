@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useUiStore } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
 import { useI18n } from '../../lib/i18n';
@@ -30,9 +31,25 @@ const CATEGORY_ICONS: Record<string, string> = {
   Minimal: 'image',
 };
 
+/** 动态分类：只显示库内有内容的（含「未分类」），并带计数角标 */
+const activeCategories = computed(() => {
+  const counts = new Map<string | null, number>();
+  for (const i of lib.items) {
+    const c = i.category ?? null;
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => ({ key, count }));
+});
+
+function catLabel(key: string | null): string {
+  return key ? t('cat.' + key.toLowerCase()) : t('cat.uncategorized');
+}
+
 function goCategory(cat: string) {
   ui.view = 'wallpapers';
-  ui.categoryFilter = cat;
+  ui.categoryFilter = cat || null;
   ui.search = '';
 }
 
@@ -76,16 +93,17 @@ async function importOwn() {
     <div class="section">
       <p class="section-label">{{ t('nav.categories') }}</p>
       <button
-        v-for="c in ui.categories"
-        :key="c"
+        v-for="c in activeCategories"
+        :key="c.key ?? 'none'"
         class="nav-item sub"
-        :class="{ active: ui.view === 'wallpapers' && ui.categoryFilter === c }"
-        :title="t(`cat.${c.toLowerCase()}`)"
-        :aria-label="t(`cat.${c.toLowerCase()}`)"
-        @click="goCategory(c)"
+        :class="{ active: ui.view === 'wallpapers' && (ui.categoryFilter ?? null) === c.key }"
+        :title="catLabel(c.key)"
+        :aria-label="catLabel(c.key)"
+        @click="goCategory(c.key ?? '')"
       >
-        <Icon :name="CATEGORY_ICONS[c] ?? 'image'" :size="16" />
-        <span class="nav-text">{{ t(`cat.${c.toLowerCase()}`) }}</span>
+        <Icon :name="(c.key && CATEGORY_ICONS[c.key]) || 'image'" :size="16" />
+        <span class="nav-text">{{ catLabel(c.key) }}</span>
+        <span v-if="c.count" class="count">{{ c.count }}</span>
       </button>
     </div>
 
