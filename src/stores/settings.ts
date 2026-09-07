@@ -25,6 +25,11 @@ export const useSettingsStore = defineStore('settings', {
     autoSwitchCollectionId: null,
     autoSwitchIntervalMin: 30,
     autoSwitchScope: 'primary' as 'primary' | 'all',
+    autoSwitchMode: 'interval' as 'interval' | 'daynight',
+    dayCollectionId: null,
+    nightCollectionId: null,
+    dayStart: '07:00',
+    nightStart: '19:00',
   }),
   getters: {
     resolvedDark(state): boolean {

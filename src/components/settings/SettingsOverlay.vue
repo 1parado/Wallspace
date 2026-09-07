@@ -167,16 +167,34 @@ function saveAndClose() {
 
         <section>
           <p class="group-label">{{ t('settings.autoSwitch') }}</p>
-          <label class="field">
-            <span>{{ t('settings.autoSwitchSource') }}</span>
-            <select v-model="settings.autoSwitchCollectionId" class="text-field">
-              <option :value="null">{{ t('settings.autoSwitchOff') }}</option>
-              <option v-for="c in collections.collections" :key="c.id" :value="c.id">
-                {{ c.name }}（{{ c.itemIds.length }}）
-              </option>
-            </select>
-          </label>
-          <template v-if="settings.autoSwitchCollectionId">
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.autoSwitchMode') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: settings.autoSwitchMode === 'interval' }"
+                @click="settings.autoSwitchMode = 'interval'"
+              >
+                {{ t('settings.modeInterval') }}
+              </button>
+              <button
+                :class="{ active: settings.autoSwitchMode === 'daynight' }"
+                @click="settings.autoSwitchMode = 'daynight'"
+              >
+                {{ t('settings.modeDayNight') }}
+              </button>
+            </div>
+          </div>
+
+          <template v-if="settings.autoSwitchMode === 'interval'">
+            <label class="field">
+              <span>{{ t('settings.autoSwitchSource') }}</span>
+              <select v-model="settings.autoSwitchCollectionId" class="text-field">
+                <option :value="null">{{ t('settings.autoSwitchOff') }}</option>
+                <option v-for="c in collections.collections" :key="c.id" :value="c.id">
+                  {{ c.name }}（{{ c.itemIds.length }}）
+                </option>
+              </select>
+            </label>
             <label class="field">
               <span>{{ t('settings.autoSwitchInterval') }}</span>
               <select v-model.number="settings.autoSwitchIntervalMin" class="text-field">
@@ -185,25 +203,57 @@ function saveAndClose() {
                 </option>
               </select>
             </label>
+          </template>
+
+          <template v-else>
+            <label class="field">
+              <span>{{ t('settings.dayCollection') }}</span>
+              <select v-model="settings.dayCollectionId" class="text-field">
+                <option :value="null">{{ t('settings.autoSwitchOff') }}</option>
+                <option v-for="c in collections.collections" :key="c.id" :value="c.id">
+                  {{ c.name }}（{{ c.itemIds.length }}）
+                </option>
+              </select>
+            </label>
+            <label class="field">
+              <span>{{ t('settings.nightCollection') }}</span>
+              <select v-model="settings.nightCollectionId" class="text-field">
+                <option :value="null">{{ t('settings.autoSwitchOff') }}</option>
+                <option v-for="c in collections.collections" :key="c.id" :value="c.id">
+                  {{ c.name }}（{{ c.itemIds.length }}）
+                </option>
+              </select>
+            </label>
             <div class="appearance-item">
-              <span class="appearance-label">{{ t('settings.autoSwitchScope') }}</span>
-              <div class="segmented">
-                <button
-                  :class="{ active: settings.autoSwitchScope === 'primary' }"
-                  @click="settings.autoSwitchScope = 'primary'"
-                >
-                  {{ t('settings.scopePrimary') }}
-                </button>
-                <button
-                  :class="{ active: settings.autoSwitchScope === 'all' }"
-                  @click="settings.autoSwitchScope = 'all'"
-                >
-                  {{ t('settings.scopeAll') }}
-                </button>
-              </div>
+              <span class="appearance-label">{{ t('settings.dayStart') }}</span>
+              <input v-model="settings.dayStart" type="time" class="text-field time-input" />
+            </div>
+            <div class="appearance-item">
+              <span class="appearance-label">{{ t('settings.nightStart') }}</span>
+              <input v-model="settings.nightStart" type="time" class="text-field time-input" />
             </div>
           </template>
-          <p class="privacy">{{ t('settings.autoSwitchHint') }}</p>
+
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.autoSwitchScope') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: settings.autoSwitchScope === 'primary' }"
+                @click="settings.autoSwitchScope = 'primary'"
+              >
+                {{ t('settings.scopePrimary') }}
+              </button>
+              <button
+                :class="{ active: settings.autoSwitchScope === 'all' }"
+                @click="settings.autoSwitchScope = 'all'"
+              >
+                {{ t('settings.scopeAll') }}
+              </button>
+            </div>
+          </div>
+          <p class="privacy">
+            {{ settings.autoSwitchMode === 'daynight' ? t('settings.dayNightHint') : t('settings.autoSwitchHint') }}
+          </p>
           <div class="appearance-item">
             <span class="appearance-label">{{ t('settings.launchAtLogin') }}</span>
             <div class="segmented">

@@ -66,6 +66,21 @@ pub struct Settings {
     /// 轮换应用范围："primary" 主屏 | "all" 全部显示器
     #[serde(default = "default_switch_scope")]
     pub auto_switch_scope: String,
+    /// 轮换模式："interval" 按间隔轮换 | "daynight" 日/夜分时
+    #[serde(default = "default_switch_mode")]
+    pub auto_switch_mode: String,
+    /// 日/夜模式：白天来源集合
+    #[serde(default)]
+    pub day_collection_id: Option<String>,
+    /// 日/夜模式：夜间来源集合
+    #[serde(default)]
+    pub night_collection_id: Option<String>,
+    /// 白天开始时间 "HH:MM"
+    #[serde(default = "default_day_start")]
+    pub day_start: String,
+    /// 夜晚开始时间 "HH:MM"
+    #[serde(default = "default_night_start")]
+    pub night_start: String,
 }
 
 fn default_locale() -> String {
@@ -84,6 +99,18 @@ fn default_switch_scope() -> String {
     "primary".into()
 }
 
+fn default_switch_mode() -> String {
+    "interval".into()
+}
+
+fn default_day_start() -> String {
+    "07:00".into()
+}
+
+fn default_night_start() -> String {
+    "19:00".into()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -99,6 +126,11 @@ impl Default for Settings {
             auto_switch_collection_id: None,
             auto_switch_interval_min: default_switch_interval(),
             auto_switch_scope: default_switch_scope(),
+            auto_switch_mode: default_switch_mode(),
+            day_collection_id: None,
+            night_collection_id: None,
+            day_start: default_day_start(),
+            night_start: default_night_start(),
         }
     }
 }

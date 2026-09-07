@@ -13,15 +13,30 @@ use crate::models::{now_ms, CmdResult, Settings, WallpaperItem};
 use crate::paths;
 use crate::settings;
 use crate::wallpaper;
+use chrono::Timelike;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::AppHandle;
+
+/// 轮换暂停标志（托盘切换；仅暂停定时轮换，不影响手动/托盘「下一张」）
+static PAUSED: AtomicBool = AtomicBool::new(false);
+
+/// 托盘切换暂停状态，返回切换后是否处于暂停
+pub fn pause_toggle() -> bool {
+    let paused = !PAUSED.load(Ordering::SeqCst);
+    PAUSED.store(paused, Ordering::SeqCst);
+    paused
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SwitchState {
     index: usize,
     last_switch: u64,
+    /// 日/夜模式的当前时间窗（"day#2026-09-07"），跨窗才切换
+    #[serde(default)]
+    window_key: Option<String>,
 }
 
 impl Default for SwitchState {
@@ -29,6 +44,7 @@ impl Default for SwitchState {
         Self {
             index: 0,
             last_switch: 0,
+            window_key: None,
         }
     }
 }
@@ -48,28 +64,73 @@ pub fn force_next(app: &AppHandle) {
 }
 
 fn rotate(app: &AppHandle, force: bool) -> CmdResult<()> {
-    let cfg = settings::load(app);
-    let Some(cid) = cfg
-        .auto_switch_collection_id
-        .clone()
-        .filter(|s| !s.trim().is_empty())
-    else {
+    if !force && PAUSED.load(Ordering::SeqCst) {
         return Ok(());
-    };
-    let interval_ms = (cfg.auto_switch_interval_min.max(1) as u64) * 60_000;
-
+    }
+    let cfg = settings::load(app);
     let state = load_state(app);
     let now = now_ms();
-    if !force && state.last_switch != 0 && now.saturating_sub(state.last_switch) < interval_ms {
+
+    // 确定轮换目标集合与当前时间窗
+    let daynight = cfg.auto_switch_mode == "daynight";
+    let (cid, window_key) = if daynight {
+        let Some(day_cid) = cfg
+            .day_collection_id
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+        else {
+            return Ok(());
+        };
+        let Some(night_cid) = cfg
+            .night_collection_id
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+        else {
+            return Ok(());
+        };
+        let now_local = chrono::Local::now();
+        let now_min = now_local.hour() as u32 * 60 + now_local.minute() as u32;
+        let day_s = hm_to_min(&cfg.day_start, 7 * 60);
+        let night_s = hm_to_min(&cfg.night_start, 19 * 60);
+        let is_day = if day_s <= night_s {
+            now_min >= day_s && now_min < night_s
+        } else {
+            // 跨零点的窗口划分
+            now_min >= day_s || now_min < night_s
+        };
+        let key = format!(
+            "{}#{}",
+            if is_day { "day" } else { "night" },
+            now_local.format("%Y-%m-%d")
+        );
+        (if is_day { day_cid } else { night_cid }, Some(key))
+    } else {
+        let Some(cid) = cfg
+            .auto_switch_collection_id
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+        else {
+            return Ok(());
+        };
+        let interval_ms = (cfg.auto_switch_interval_min.max(1) as u64) * 60_000;
+        if !force
+            && state.last_switch != 0
+            && now.saturating_sub(state.last_switch) < interval_ms
+        {
+            return Ok(());
+        }
+        (cid, None)
+    };
+
+    // 日/夜模式：同一时间窗内不重复切换（force 除外）
+    if !force && daynight_gate(&state.window_key, &window_key) {
         return Ok(());
     }
 
     let mut items = items_of_collection(app, &cid);
-    // 单张集合轮换无意义，但保留（相当于定时重设同一张）
     if items.is_empty() {
         return Ok(());
     }
-    // index 越界（集合缩小过）时取模回绕
     let idx = state.index % items.len();
     let item = items.swap_remove(idx);
 
@@ -81,8 +142,32 @@ fn rotate(app: &AppHandle, force: bool) -> CmdResult<()> {
         &SwitchState {
             index: (idx + 1) % items.len(),
             last_switch: now,
+            window_key,
         },
     )
+}
+
+/// 日/夜模式闸门：窗口未变化则不切换
+fn daynight_gate(state_key: &Option<String>, current: &Option<String>) -> bool {
+    match (state_key, current) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
+    }
+}
+
+fn hm_to_min(s: &str, fallback: u32) -> u32 {
+    let mut it = s.split(':');
+    let h = it
+        .next()
+        .and_then(|v| v.parse::<u32>().ok())
+        .map(|h| h.min(23))
+        .unwrap_or(fallback / 60);
+    let m = it
+        .next()
+        .and_then(|v| v.parse::<u32>().ok())
+        .map(|m| m.min(59))
+        .unwrap_or(fallback % 60);
+    h * 60 + m
 }
 
 fn items_of_collection(app: &AppHandle, cid: &str) -> Vec<WallpaperItem> {

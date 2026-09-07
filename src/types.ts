@@ -49,6 +49,14 @@ export interface Settings {
   autoSwitchIntervalMin?: number;
   /** 轮换应用范围 */
   autoSwitchScope?: 'primary' | 'all';
+  /** 轮换模式：按间隔 | 日/夜分时 */
+  autoSwitchMode?: 'interval' | 'daynight';
+  /** 日/夜模式：白天/夜间来源集合 */
+  dayCollectionId?: string | null;
+  nightCollectionId?: string | null;
+  /** 白天/夜晚开始时间 "HH:MM" */
+  dayStart?: string;
+  nightStart?: string;
 }
 
 export interface ImportReport {
