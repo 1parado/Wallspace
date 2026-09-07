@@ -79,6 +79,8 @@ export default {
   'toolbar.allDisplays': '所有显示器',
   'toolbar.display': '显示器',
   'toolbar.search': '搜索壁纸',
+  'toolbar.searchHistory': '搜索历史',
+  'toolbar.clearHistory': '清空',
   'toolbar.searchResult': '搜索 · “{q}”',
   'toolbar.category': '分类',
   'toolbar.allWallpapers': '全部壁纸',

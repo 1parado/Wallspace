@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useUiStore } from '../../stores/ui';
 import { useSettingsStore } from '../../stores/settings';
@@ -26,6 +26,29 @@ const subtitle = computed(() => {
 });
 
 const searchEl = ref<HTMLInputElement | null>(null);
+
+// —— 搜索历史 ——
+const historyOpen = ref(false);
+let searchTimer: number | undefined;
+
+// 输入停顿 900ms 后记录搜索词（去重置顶）
+watch(
+  () => ui.search,
+  (q) => {
+    clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => ui.rememberSearch(q), 900);
+  }
+);
+
+function onSearchBlur() {
+  // 延迟关闭，给历史项的 mousedown 留时间
+  window.setTimeout(() => (historyOpen.value = false), 160);
+}
+
+function useHistory(q: string) {
+  ui.search = q;
+  historyOpen.value = false;
+}
 
 function onGlobalKey(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -84,15 +107,34 @@ function toggleTheme() {
     </div>
 
     <div class="center">
-      <div class="search">
-        <Icon name="search" :size="15" />
-        <input
-          ref="searchEl"
-          v-model="ui.search"
-          :placeholder="t('toolbar.search')"
-          spellcheck="false"
-        />
-        <kbd>Ctrl K</kbd>
+      <div class="search-wrap">
+        <div class="search" @focusin="historyOpen = true" @focusout="onSearchBlur">
+          <Icon name="search" :size="15" />
+          <input
+            ref="searchEl"
+            v-model="ui.search"
+            :placeholder="t('toolbar.search')"
+            spellcheck="false"
+          />
+          <kbd>Ctrl K</kbd>
+        </div>
+        <Transition name="menu">
+          <div v-if="historyOpen && ui.searchHistory.length" class="menu glass search-menu">
+            <div class="menu-head">
+              <span>{{ t('toolbar.searchHistory') }}</span>
+              <button @click="ui.clearSearchHistory()">{{ t('toolbar.clearHistory') }}</button>
+            </div>
+            <button
+              v-for="q in ui.searchHistory"
+              :key="q"
+              class="menu-item"
+              @mousedown.prevent="useHistory(q)"
+            >
+              <Icon name="search" :size="13" />
+              <span class="menu-name">{{ q }}</span>
+            </button>
+          </div>
+        </Transition>
       </div>
     </div>
 
@@ -191,6 +233,33 @@ function toggleTheme() {
   justify-content: center;
   position: absolute;
   right: 232px;
+}
+
+.search-wrap {
+  position: relative;
+}
+
+.search-menu {
+  width: 260px;
+}
+
+.menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.menu-head button {
+  font-size: 11px;
+  color: var(--text-3);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.menu-head button:hover {
+  color: var(--text-1);
 }
 
 .search {

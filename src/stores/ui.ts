@@ -22,9 +22,21 @@ function readSortMode(): string {
   }
 }
 
+function readSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem('wallspace.searchHistory');
+    const arr = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(arr) ? (arr as string[]).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const useUiStore = defineStore('ui', {
   state: () => ({
     view: 'discover' as ViewId,
+    /** 搜索历史（最多 8 条，localStorage 持久化） */
+    searchHistory: readSearchHistory(),
     /** Wallpapers 视图内的分类过滤，null = 全部 */
     categoryFilter: null as string | null,
     search: '',
@@ -84,6 +96,25 @@ export const useUiStore = defineStore('ui', {
         this.monitors = await listMonitors();
       } catch (e) {
         this.toast('error', String(e));
+      }
+    },
+    /** 记录搜索词：去重置顶，上限 8 条 */
+    rememberSearch(q: string) {
+      const query = q.trim();
+      if (!query) return;
+      this.searchHistory = [query, ...this.searchHistory.filter((s) => s !== query)].slice(0, 8);
+      try {
+        localStorage.setItem('wallspace.searchHistory', JSON.stringify(this.searchHistory));
+      } catch {
+        /* 隐私模式等场景忽略 */
+      }
+    },
+    clearSearchHistory() {
+      this.searchHistory = [];
+      try {
+        localStorage.removeItem('wallspace.searchHistory');
+      } catch {
+        /* 忽略 */
       }
     },
     goto(view: ViewId) {

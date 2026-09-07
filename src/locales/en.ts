@@ -77,6 +77,8 @@ export default {
   'toolbar.allDisplays': 'All Displays',
   'toolbar.display': 'Display',
   'toolbar.search': 'Search wallpapers',
+  'toolbar.searchHistory': 'Recent searches',
+  'toolbar.clearHistory': 'Clear',
   'toolbar.searchResult': 'Search · “{q}”',
   'toolbar.category': 'Category',
   'toolbar.allWallpapers': 'All wallpapers',
