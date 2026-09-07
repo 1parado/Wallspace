@@ -264,11 +264,6 @@ async function importOwn() {
             class="count ghost"
           >{{ c.itemIds.length }}</span>
           <span class="coll-actions" @click.stop>
-            <button
-              class="mini-act"
-              :title="t('collections.rename')"
-              @contextmenu.prevent.stop="openCtx($event, c.id)"
-            >
             <button class="mini-act" :title="t('collections.rename')" @click="startRename(c.id)">
               <Icon name="pencil" :size="12" />
             </button>

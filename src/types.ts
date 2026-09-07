@@ -39,6 +39,8 @@ export interface Settings {
   locale: 'zh-CN' | 'en';
   theme: ThemeMode;
   sidebarHidden: boolean;
+  /** 侧边栏展开（图标+文字）模式 */
+  sidebarExpanded: boolean;
   /** 智能打标模型（chat/completions）；空 = 仅关键词规则 */
   classifyModel?: string;
 }
