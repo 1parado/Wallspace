@@ -7,6 +7,7 @@ import { useI18n } from '../../lib/i18n';
 import { assetUrl, revealItem, extractPalette } from '../../lib/api';
 import { buildCategoryTree, displayCategory, type CatNode } from '../../lib/categoryTree';
 import ExportModal from './ExportModal.vue';
+import ShareCardModal from '../common/ShareCardModal.vue';
 import Icon from '../common/Icon.vue';
 
 const ui = useUiStore();
@@ -138,6 +139,7 @@ const confirmingDelete = ref(false);
 const editCategory = ref(false);
 const showExport = ref(false);
 const showInfo = ref(false);
+const showShare = ref(false);
 
 function startEdit() {
   if (!item.value) return;
@@ -176,6 +178,10 @@ function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     if (showExport.value) {
       showExport.value = false;
+      return;
+    }
+    if (showShare.value) {
+      showShare.value = false;
       return;
     }
     if (addToOpen.value) {
@@ -633,6 +639,13 @@ function openSource() {
           </div>
           <button
             class="icon-btn"
+            :title="t('share.open')"
+            @click="showShare = true"
+          >
+            <Icon name="share" :size="16" />
+          </button>
+          <button
+            class="icon-btn"
             :title="t('export.open')"
             @click="showExport = true"
           >
@@ -686,6 +699,12 @@ function openSource() {
       v-if="showExport"
       :item="item"
       @close="showExport = false"
+    />
+
+    <ShareCardModal
+      :item="item"
+      :open="showShare"
+      @close="showShare = false"
     />
   </div>
 </template>

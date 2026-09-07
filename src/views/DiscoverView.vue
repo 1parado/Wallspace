@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import type { WallpaperItem } from '../types';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
-import { assetUrl, saveBinaryFile } from '../lib/api';
+import { assetUrl } from '../lib/api';
 import { seededRandom } from '../lib/sortItems';
-import { renderShareCard, canvasToPng, canvasToJpeg } from '../lib/shareCard';
-import { save as saveDialog } from '@tauri-apps/plugin-dialog';
+import ShareCardModal from '../components/common/ShareCardModal.vue';
 import WallpaperCard from '../components/wallpaper/WallpaperCard.vue';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -43,64 +43,14 @@ const daily = computed(() => {
 const dailyApplying = computed(() => daily.value && lib.applyingId === daily.value.id);
 
 // —— 每日精选分享卡 ——
+const shareFor = ref<WallpaperItem | null>(null);
 const shareOpen = ref(false);
 const shareBusy = ref(false);
-const shareSaving = ref(false);
-const shareUrl = ref('');
-let shareCanvasEl: HTMLCanvasElement | null = null;
 
 async function openShare() {
   if (shareBusy.value || !daily.value) return;
-  shareBusy.value = true;
-  try {
-    shareCanvasEl = await renderShareCard(daily.value);
-    if (shareUrl.value) URL.revokeObjectURL(shareUrl.value);
-    shareUrl.value = URL.createObjectURL(await canvasToPng(shareCanvasEl));
-    shareOpen.value = true;
-  } catch (e) {
-    ui.toast('error', String(e));
-  } finally {
-    shareBusy.value = false;
-  }
-}
-
-function closeShare() {
-  shareOpen.value = false;
-  if (shareUrl.value) {
-    URL.revokeObjectURL(shareUrl.value);
-    shareUrl.value = '';
-  }
-}
-
-async function copyShare() {
-  if (!shareCanvasEl) return;
-  try {
-    const blob = await canvasToPng(shareCanvasEl);
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    ui.toast('success', t('share.copied'));
-  } catch (e) {
-    ui.toast('error', String(e));
-  }
-}
-
-async function saveShare() {
-  if (!shareCanvasEl || shareSaving.value) return;
-  const path = await saveDialog({
-    defaultPath: `wallspace-daily-${new Date().toISOString().slice(0, 10)}.jpg`,
-    filters: [{ name: 'JPEG', extensions: ['jpg'] }],
-  });
-  if (!path || !shareCanvasEl) return;
-  shareSaving.value = true;
-  try {
-    const blob = await canvasToJpeg(shareCanvasEl);
-    await saveBinaryFile(path, new Uint8Array(await blob.arrayBuffer()));
-    ui.toast('success', t('share.saved'));
-    closeShare();
-  } catch (e) {
-    ui.toast('error', String(e));
-  } finally {
-    shareSaving.value = false;
-  }
+  shareFor.value = daily.value;
+  shareOpen.value = true;
 }
 </script>
 
@@ -183,26 +133,7 @@ async function saveShare() {
     />
 
     <!-- 分享卡弹窗 -->
-    <div v-if="shareOpen && shareUrl" class="share-backdrop" @click.self="closeShare">
-      <div class="share-modal glass">
-        <div class="share-head">
-          <h3>{{ t('share.title') }}</h3>
-          <button class="share-close" @click="closeShare">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <div class="share-preview">
-          <img :src="shareUrl" draggable="false" />
-        </div>
-        <div class="share-actions">
-          <button class="btn-ghost" @click="copyShare">{{ t('share.copy') }}</button>
-          <button class="btn-primary" :disabled="shareSaving" @click="saveShare">
-            <Icon name="download" :size="14" />
-            {{ shareSaving ? t('share.saving') : t('share.save') }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ShareCardModal :item="shareFor" :open="shareOpen" @close="shareOpen = false" />
   </div>
 </template>
 
@@ -309,78 +240,6 @@ async function saveShare() {
   display: flex;
   gap: 10px;
   margin-top: 14px;
-}
-
-/* 分享卡弹窗 */
-.share-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  place-items: center;
-  padding: 40px;
-  background: var(--veil);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-.share-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: min(420px, 90vw);
-  max-height: calc(100vh - 100px);
-  padding: 18px 20px;
-  border-radius: var(--radius-overlay);
-  border: 1px solid var(--stroke-strong);
-  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.4);
-}
-
-.share-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.share-head h3 {
-  font-size: 15px;
-  font-weight: 620;
-}
-
-.share-close {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: var(--text-3);
-  transition: all var(--dur-1) var(--ease-out);
-}
-
-.share-close:hover {
-  color: var(--text-1);
-  background: var(--fill-hover);
-}
-
-.share-preview {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-}
-
-.share-preview img {
-  max-width: 100%;
-  max-height: min(52vh, 560px);
-  object-fit: contain;
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
-}
-
-.share-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }
 
 @media (max-width: 900px) {

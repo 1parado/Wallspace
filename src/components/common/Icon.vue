@@ -64,6 +64,8 @@ const PATHS: Record<string, string> = {
   'panel-left':
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  share:
+    '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/>',
 };
 
 const svg = computed(() => PATHS[props.name] ?? '');
