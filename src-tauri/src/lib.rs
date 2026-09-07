@@ -146,6 +146,73 @@ async fn import_backup(app: AppHandle, path: String) -> CmdResult<backup::Import
     .map_err(|e| format!("任务执行失败: {e}"))?
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateInfo {
+    current: String,
+    latest: String,
+    has_update: bool,
+    url: String,
+}
+
+/// 检查更新：查询 GitHub Releases 最新版本并与当前版本比较。
+#[tauri::command]
+async fn check_updates(app: AppHandle) -> CmdResult<UpdateInfo> {
+    let current = app.package_info().version.to_string();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))?;
+    let resp = client
+        .get("https://api.github.com/repos/1parado/Wallspace/releases/latest")
+        .header("User-Agent", "wallspace-app")
+        .send()
+        .await
+        .map_err(|e| format!("网络请求失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API 返回 HTTP {}", resp.status().as_u16()));
+    }
+    let payload: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {e}"))?;
+    let latest = payload["tag_name"]
+        .as_str()
+        .unwrap_or("")
+        .trim_start_matches('v')
+        .to_string();
+    let url = payload["html_url"]
+        .as_str()
+        .unwrap_or("https://github.com/1parado/Wallspace/releases")
+        .to_string();
+    if latest.is_empty() {
+        return Err("未获取到最新版本号".into());
+    }
+    let has_update = version_gt(&latest, &current);
+    Ok(UpdateInfo {
+        current,
+        latest,
+        has_update,
+        url,
+    })
+}
+
+/// 三段式版本号比较：a > b 则 true
+fn version_gt(a: &str, b: &str) -> bool {
+    let parse = |s: &str| -> Vec<u64> {
+        s.split('.').map(|p| p.trim().parse().unwrap_or(0)).collect()
+    };
+    let (va, vb) = (parse(a), parse(b));
+    for i in 0..3 {
+        let x = va.get(i).copied().unwrap_or(0);
+        let y = vb.get(i).copied().unwrap_or(0);
+        if x != y {
+            return x > y;
+        }
+    }
+    false
+}
+
 /// 单条文本 LLM 打标（「一键智能整理」的规则未命中回退）。
 /// 未配置模型/key 或调用失败都返回 None，由前端保留关键词规则结果。
 #[tauri::command]
@@ -337,6 +404,7 @@ pub fn run() {
             classify_text,
             export_backup,
             import_backup,
+            check_updates,
             grok_imagine,
             grok_imagine_status,
             list_collections,

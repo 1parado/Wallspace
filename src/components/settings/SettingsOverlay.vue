@@ -3,9 +3,10 @@ import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useUiStore } from '../../stores/ui';
-import { testConnection, exportBackup, importBackup } from '../../lib/api';
+import { testConnection, exportBackup, importBackup, checkUpdates } from '../../lib/api';
 import { isEnabled as autostartEnabled, enable as autostartEnable, disable as autostartDisable } from '@tauri-apps/plugin-autostart';
 import { save as saveDialog, open as openDialog } from '@tauri-apps/plugin-dialog';
+import { getVersion } from '@tauri-apps/api/app';
 import { useI18n } from '../../lib/i18n';
 import type { ThemeMode } from '../../types';
 import Icon from '../common/Icon.vue';
@@ -19,6 +20,11 @@ const testing = ref(false);
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
 const launchAtLogin = ref(false);
 
+// —— 关于 / 检查更新 ——
+const appVersion = ref('');
+const checkingUpdate = ref(false);
+const updateResult = ref<{ hasUpdate: boolean; latest: string; url: string } | null>(null);
+
 onMounted(async () => {
   settings.load();
   collections.load();
@@ -26,6 +32,11 @@ onMounted(async () => {
     launchAtLogin.value = await autostartEnabled();
   } catch {
     /* 插件不可用时忽略 */
+  }
+  try {
+    appVersion.value = await getVersion();
+  } catch {
+    /* 忽略 */
   }
 });
 
@@ -101,6 +112,24 @@ function pickWatchFolder() {
       settings.watchFolder = picked;
     }
   });
+}
+
+async function runCheckUpdate() {
+  if (checkingUpdate.value) return;
+  checkingUpdate.value = true;
+  updateResult.value = null;
+  try {
+    const r = await checkUpdates();
+    updateResult.value = { hasUpdate: r.hasUpdate, latest: r.latest, url: r.url };
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    checkingUpdate.value = false;
+  }
+}
+
+function openReleases() {
+  if (updateResult.value) window.open(updateResult.value.url, '_blank');
 }
 
 async function runTest() {
@@ -418,6 +447,36 @@ function saveAndClose() {
           </label>
           <p class="privacy">{{ t('settings.backupHint') }}</p>
         </section>
+
+        <section>
+          <p class="group-label">{{ t('settings.about') }}</p>
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.currentVersion') }}</span>
+            <span class="version-text">{{ appVersion ? `v${appVersion}` : '—' }}</span>
+          </div>
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.checkUpdate') }}</span>
+            <div class="update-row">
+              <button class="backup-btn" :disabled="checkingUpdate" @click="runCheckUpdate">
+                {{ checkingUpdate ? t('settings.checking') : t('settings.checkUpdate') }}
+              </button>
+              <span v-if="updateResult" class="update-result" :class="{ ok: updateResult.hasUpdate }">
+                {{
+                  updateResult.hasUpdate
+                    ? t('settings.newVersion', { v: updateResult.latest })
+                    : t('settings.upToDate')
+                }}
+              </span>
+              <button
+                v-if="updateResult?.hasUpdate"
+                class="backup-btn"
+                @click="openReleases"
+              >
+                {{ t('settings.openReleases') }}
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div class="foot">
@@ -468,6 +527,28 @@ function saveAndClose() {
 .watch-row .text-field {
   flex: 1;
   min-width: 0;
+}
+
+.update-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.update-result {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.update-result.ok {
+  color: var(--accent, #3b82f6);
+  font-weight: 600;
+}
+
+.version-text {
+  font-size: 12.5px;
+  color: var(--text-2);
 }
 
 .backdrop {

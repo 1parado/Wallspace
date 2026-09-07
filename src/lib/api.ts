@@ -115,6 +115,18 @@ export async function importBackup(path: string): Promise<BackupImportResult> {
   return invoke('import_backup', { path });
 }
 
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  hasUpdate: boolean;
+  url: string;
+}
+
+/** 检查更新：查询 GitHub Releases 最新版本 */
+export async function checkUpdates(): Promise<UpdateInfo> {
+  return invoke('check_updates');
+}
+
 export async function revealItem(path: string): Promise<void> {
   return invoke('reveal_item', { path });
 }
