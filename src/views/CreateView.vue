@@ -34,6 +34,12 @@ function pickCategory(c: string | null) {
   if (c) localStorage.setItem(LAST_CAT_KEY, c);
 }
 
+/** 重置为「跟随提示词」自动预选 */
+function followPrompt() {
+  categoryTouched.value = false;
+  category.value = guessCategory(prompt.value);
+}
+
 const autoSuggested = computed(
   () => !categoryTouched.value && !!prompt.value.trim() && !!guessCategory(prompt.value)
 );
@@ -93,7 +99,35 @@ async function generate() {
     engine.value === 'grok'
       ? await lib.generateGrok(p, grokModel.value, grokRatio.value, category.value, tags)
       : await lib.generate(p, size.value, category.value, tags);
-  if (item) ui.previewId = item.id;
+  if (item) {
+    savePromptHistory(p);
+    ui.previewId = item.id;
+  }
+}
+
+/** 提示词历史：本地保存最近 12 条，点击即复用 */
+const HIST_KEY = 'wallspace.promptHistory';
+const promptHistory = ref<string[]>(loadHistory());
+
+function loadHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HIST_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePromptHistory(p: string) {
+  const next = [p, ...promptHistory.value.filter((x) => x !== p)].slice(0, 12);
+  promptHistory.value = next;
+  localStorage.setItem(HIST_KEY, JSON.stringify(next));
+}
+
+function clearHistory() {
+  promptHistory.value = [];
+  localStorage.removeItem(HIST_KEY);
 }
 
 const IDEA_KEYS = ['create.idea1', 'create.idea2', 'create.idea3', 'create.idea4'] as const;
@@ -135,6 +169,22 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
         :placeholder="t('create.placeholder')"
         spellcheck="false"
       />
+
+      <div v-if="promptHistory.length" class="hist-row">
+        <span class="label">{{ t('create.promptHistory') }}</span>
+        <button
+          v-for="h in promptHistory.slice(0, 6)"
+          :key="h"
+          class="hist-chip"
+          :title="h"
+          @click="prompt = h"
+        >
+          {{ h.length > 26 ? h.slice(0, 26) + '…' : h }}
+        </button>
+        <button class="hist-clear" :title="t('create.clearHistory')" @click="clearHistory">
+          <Icon name="trash" :size="12" />
+        </button>
+      </div>
 
       <div class="row">
         <div v-if="engine === 'openai'" class="col">
@@ -187,6 +237,14 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
           <p class="label">
             {{ t('create.category') }}
             <span v-if="autoSuggested" class="auto-badge">{{ t('create.autoSuggested') }}</span>
+            <button
+              v-if="categoryTouched"
+              class="follow-btn"
+              :title="t('create.followPromptTip')"
+              @click="followPrompt"
+            >
+              {{ t('create.followPrompt') }}
+            </button>
           </p>
           <div class="segmented wrap">
             <button :class="{ active: category === null }" @click="pickCategory(null)">
@@ -254,6 +312,66 @@ const recent = computed(() => lib.aiItems.slice(0, 8));
   border-radius: 100px;
   padding: 1px 7px;
   vertical-align: 1px;
+}
+
+.follow-btn {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 560;
+  color: var(--text-3);
+  text-decoration: underline dotted;
+  vertical-align: 1px;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.follow-btn:hover {
+  color: var(--text-1);
+}
+
+.hist-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.hist-row .label {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 11px;
+}
+
+.hist-chip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-3);
+  border: 1px solid var(--stroke);
+  border-radius: 100px;
+  padding: 3px 11px;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.hist-chip:hover {
+  color: var(--text-1);
+  border-color: var(--stroke-strong);
+}
+
+.hist-clear {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.hist-clear:hover {
+  color: var(--accent-heart);
+  background: var(--fill-hover);
 }
 
 .label {

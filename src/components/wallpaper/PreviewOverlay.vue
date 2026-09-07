@@ -155,6 +155,31 @@ async function copyPrompt() {
   }
 }
 
+/** 用同一条提示词与近似参数重新生成 */
+async function regenerateSimilar() {
+  const it = item.value;
+  if (!it?.prompt || lib.generating || lib.applyingId) return;
+  const cat = it.category ?? null;
+  const tags = it.tags ?? [];
+  const isGrok = (it.model ?? '').includes('grok');
+  let created;
+  if (isGrok) {
+    const r = it.width / it.height;
+    const ratio =
+      Math.abs(r - 16 / 9) < 0.05
+        ? '16:9'
+        : Math.abs(r - 1) < 0.05
+          ? '1:1'
+          : Math.abs(r - 9 / 16) < 0.05
+            ? '9:16'
+            : '4:3';
+    created = await lib.generateGrok(it.prompt, it.model ?? 'grok-imagine-image', ratio, cat, tags);
+  } else {
+    created = await lib.generate(it.prompt, `${it.width}x${it.height}`, cat, tags);
+  }
+  if (created) ui.previewId = created.id;
+}
+
 async function openInExplorer() {
   if (item.value) await revealItem(item.value.filePath);
 }
@@ -313,6 +338,15 @@ function openSource() {
             @click="doDelete"
           >
             <Icon name="trash" :size="16" />
+          </button>
+          <button
+            v-if="item.prompt"
+            class="icon-btn"
+            :class="{ busy: lib.generating }"
+            :title="t('preview.similarTip')"
+            @click="regenerateSimilar"
+          >
+            <Icon name="sparkles" :size="16" />
           </button>
           <button class="btn-primary apply" :disabled="lib.applyingId === item.id" @click="lib.apply(item.id)">
             {{ lib.applyingId === item.id ? t('preview.applying') : t('preview.apply') }}
