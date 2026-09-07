@@ -62,6 +62,8 @@ export interface Settings {
   globalShortcuts?: boolean;
   /** 自动备份间隔（天）：0 = 关闭 */
   autoBackupDays?: number;
+  /** 监视文件夹：新图片自动导入媒体库（空 = 关闭） */
+  watchFolder?: string | null;
   nightStart?: string;
 }
 

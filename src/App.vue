@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useUiStore } from './stores/ui';
 import { useLibraryStore } from './stores/library';
 import { useSettingsStore } from './stores/settings';
@@ -42,8 +43,18 @@ const current = computed(() => VIEWS[ui.view]);
 const dragging = ref(false);
 const IMAGE_EXT = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
+let unlistenLibrary: UnlistenFn | null = null;
+
 onMounted(async () => {
   await Promise.all([settings.load(), lib.refresh(), ui.loadMonitors(), collections.load()]);
+
+  // 监视文件夹后台导入完成后刷新媒体库
+  listen<number>('library-changed', (e) => {
+    lib.refresh();
+    if (e.payload > 0) ui.toast('success', t('toast.watchImported', { n: e.payload }));
+  })
+    .then((fn) => (unlistenLibrary = fn))
+    .catch(() => {});
 
   try {
     const webview = getCurrentWebview();
@@ -66,6 +77,10 @@ onMounted(async () => {
   } catch {
     /* 拖放监听失败不影响主流程 */
   }
+});
+
+onUnmounted(() => {
+  unlistenLibrary?.();
 });
 </script>
 

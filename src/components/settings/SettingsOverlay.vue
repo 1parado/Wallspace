@@ -95,6 +95,14 @@ async function runImportBackup() {
   }
 }
 
+function pickWatchFolder() {
+  openDialog({ directory: true, title: t('settings.watchFolderPick') }).then((picked) => {
+    if (typeof picked === 'string' && picked) {
+      settings.watchFolder = picked;
+    }
+  });
+}
+
 async function runTest() {
   testing.value = true;
   testResult.value = null;
@@ -362,6 +370,32 @@ function saveAndClose() {
         </section>
 
         <section>
+          <p class="group-label">{{ t('settings.watchSection') }}</p>
+          <label class="field">
+            <span>{{ t('settings.watchFolder') }}</span>
+            <div class="watch-row">
+              <input
+                :value="settings.watchFolder ?? ''"
+                class="text-field"
+                readonly
+                :placeholder="t('settings.watchFolderNone')"
+              />
+              <button class="backup-btn" :disabled="backingUp" @click="pickWatchFolder">
+                {{ t('settings.watchFolderPick') }}
+              </button>
+              <button
+                v-if="settings.watchFolder"
+                class="backup-btn"
+                @click="settings.watchFolder = ''"
+              >
+                {{ t('settings.watchFolderClear') }}
+              </button>
+            </div>
+          </label>
+          <p class="privacy">{{ t('settings.watchFolderHint') }}</p>
+        </section>
+
+        <section>
           <p class="group-label">{{ t('settings.backup') }}</p>
           <div class="backup-row">
             <button class="backup-btn" :disabled="backingUp" @click="runExportBackup">
@@ -423,6 +457,17 @@ function saveAndClose() {
 .backup-btn:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+.watch-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.watch-row .text-field {
+  flex: 1;
+  min-width: 0;
 }
 
 .backdrop {

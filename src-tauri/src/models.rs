@@ -90,6 +90,9 @@ pub struct Settings {
     /// 自动备份间隔（天）：0 = 关闭
     #[serde(default)]
     pub auto_backup_days: u32,
+    /// 监视文件夹：新图片自动导入媒体库（None/空 = 关闭）
+    #[serde(default)]
+    pub watch_folder: Option<String>,
 }
 
 fn default_locale() -> String {
@@ -143,6 +146,7 @@ impl Default for Settings {
             auto_switch_random: false,
             global_shortcuts: false,
             auto_backup_days: 0,
+            watch_folder: None,
         }
     }
 }

@@ -14,6 +14,7 @@ mod store;
 mod tray;
 mod wallpaper;
 mod wallhaven;
+mod watch;
 
 use collections::Collection;
 use models::{CmdResult, ImportReport, MonitorInfo, Settings, WallpaperItem};

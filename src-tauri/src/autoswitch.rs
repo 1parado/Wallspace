@@ -57,6 +57,8 @@ pub fn spawn(app: AppHandle) {
         std::thread::sleep(Duration::from_secs(30));
         // 自动备份节拍（内部自带间隔判断，未开启时零成本返回）
         let _ = crate::backup::auto_backup_tick(&app);
+        // 监视文件夹自动导入节拍
+        let _ = crate::watch::tick(&app);
         // 轮换失败静默忽略（如显示器暂时不可用），下一轮重试
         let _ = rotate(&app, false);
     });
