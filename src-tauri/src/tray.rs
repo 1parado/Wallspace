@@ -1,12 +1,35 @@
-//! tray.rs —— 系统托盘：打开主界面 / 立即轮换下一张 / 退出。
+//! tray.rs —— 系统托盘：打开主界面 / 立即轮换下一张 / 暂停轮换 / 退出。
 //!
 //! 菜单文案按启动时的界面语言选择（settings.locale）。
+//! 暂停项的文案由 `sync_pause_label` 统一维护（托盘菜单与全局快捷键共用）。
 
 use crate::autoswitch;
 use crate::settings;
+use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::Manager;
+use tauri::{AppHandle, Manager, Wry};
+
+/// 托盘「暂停」菜单项 + 双语文案，挂在 AppHandle 状态上供外部同步
+pub struct TrayState {
+    pause: Mutex<Option<MenuItem<Wry>>>,
+    label_pause: String,
+    label_resume: String,
+}
+
+/// 同步「暂停/恢复轮换」菜单文案（托盘与快捷键触发后都要调用）
+pub fn sync_pause_label(app: &AppHandle, paused: bool) {
+    let Some(state) = app.try_state::<TrayState>() else {
+        return;
+    };
+    let Ok(guard) = state.pause.lock() else {
+        return;
+    };
+    if let Some(item) = guard.as_ref() {
+        let text = if paused { &state.label_resume } else { &state.label_pause };
+        let _ = item.set_text(text);
+    }
+}
 
 pub fn init(app: &tauri::App) -> tauri::Result<()> {
     let zh = settings::load(app.handle()).locale != "en";
@@ -32,7 +55,12 @@ pub fn init(app: &tauri::App) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", label_quit, true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &next, &pause, &quit])?;
 
-    let pause_for_handler = pause.clone();
+    app.manage(TrayState {
+        pause: Mutex::new(Some(pause.clone())),
+        label_pause: label_pause.into(),
+        label_resume: label_resume.into(),
+    });
+
     let mut builder = TrayIconBuilder::with_id("wallspace-tray")
         .menu(&menu)
         .tooltip(tip)
@@ -52,11 +80,7 @@ pub fn init(app: &tauri::App) -> tauri::Result<()> {
             }
             "pause" => {
                 let paused = autoswitch::pause_toggle();
-                let _ = pause_for_handler.set_text(if paused {
-                    label_resume
-                } else {
-                    label_pause
-                });
+                sync_pause_label(app, paused);
             }
             "quit" => app.exit(0),
             _ => {}

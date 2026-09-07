@@ -58,6 +58,8 @@ export interface Settings {
   dayStart?: string;
   /** 轮换时随机挑选（否则按集合顺序取下一张） */
   autoSwitchRandom?: boolean;
+  /** 全局快捷键：Ctrl+Alt+N 下一张 / Ctrl+Alt+P 暂停/恢复轮换 */
+  globalShortcuts?: boolean;
   nightStart?: string;
 }
 

@@ -84,6 +84,9 @@ pub struct Settings {
     /// 轮换时随机挑选（否则按集合顺序取下一张）
     #[serde(default)]
     pub auto_switch_random: bool,
+    /// 全局快捷键：Ctrl+Alt+N 下一张 / Ctrl+Alt+P 暂停/恢复轮换
+    #[serde(default)]
+    pub global_shortcuts: bool,
 }
 
 fn default_locale() -> String {
@@ -135,6 +138,7 @@ impl Default for Settings {
             day_start: default_day_start(),
             night_start: default_night_start(),
             auto_switch_random: false,
+            global_shortcuts: false,
         }
     }
 }

@@ -31,6 +31,7 @@ export const useSettingsStore = defineStore('settings', {
     dayStart: '07:00',
     nightStart: '19:00',
     autoSwitchRandom: false,
+    globalShortcuts: false,
   }),
   getters: {
     resolvedDark(state): boolean {

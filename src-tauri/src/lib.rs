@@ -97,7 +97,26 @@ fn get_settings(app: AppHandle) -> Settings {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, settings: Settings) -> CmdResult<()> {
-    settings::save(&app, &settings)
+    settings::save(&app, &settings)?;
+    // 保存后同步全局快捷键注册状态
+    apply_global_shortcuts(&app, settings.global_shortcuts);
+    Ok(())
+}
+
+/// 全局快捷键注册开关（幂等）：Ctrl+Alt+N 下一张，Ctrl+Alt+P 暂停/恢复轮换
+fn apply_global_shortcuts(app: &AppHandle, enable: bool) {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    let gs = app.global_shortcut();
+    let _ = gs.unregister("ctrl+alt+n");
+    let _ = gs.unregister("ctrl+alt+p");
+    if enable {
+        if let Err(e) = gs.register("ctrl+alt+n") {
+            eprintln!("注册 Ctrl+Alt+N 失败: {e}");
+        }
+        if let Err(e) = gs.register("ctrl+alt+p") {
+            eprintln!("注册 Ctrl+Alt+P 失败: {e}");
+        }
+    }
 }
 
 #[tauri::command]
@@ -251,10 +270,34 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    // 仅响应按下瞬间
+                    if event.state() != tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        return;
+                    }
+                    let key = shortcut.into_string().to_lowercase();
+                    let app = app.clone();
+                    match key.as_str() {
+                        "ctrl+alt+n" => std::thread::spawn(move || {
+                            autoswitch::force_next(&app);
+                        }),
+                        "ctrl+alt+p" => std::thread::spawn(move || {
+                            let paused = autoswitch::pause_toggle();
+                            tray::sync_pause_label(&app, paused);
+                        }),
+                        _ => return,
+                    };
+                })
+                .build(),
+        )
         .setup(|app| {
             store::init(app.handle())?;
             autoswitch::spawn(app.handle().clone());
             tray::init(app)?;
+            let cfg = settings::load(app.handle());
+            apply_global_shortcuts(app.handle(), cfg.global_shortcuts);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

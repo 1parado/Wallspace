@@ -260,6 +260,8 @@ export default {
   'settings.autoSwitchHint': '后台每 30 秒检查一次，到达间隔后自动从集合轮换下一张；重启后按上次位置继续。',
   'settings.autoSwitchRandom': '随机挑选',
   'settings.autoSwitchRandomHint': '开启后每次轮换从集合中随机挑一张（不与当前重复），顺序模式则按集合排序依次切换。',
+  'settings.globalShortcuts': '全局快捷键',
+  'settings.globalShortcutsHint': 'Ctrl+Alt+N 换下一张壁纸，Ctrl+Alt+P 暂停/恢复轮换；系统级生效，窗口最小化时也可用。保存后生效。',
   'settings.launchAtLogin': '开机自动启动',
   'settings.launchOn': '启用',
   'settings.launchOff': '关闭',

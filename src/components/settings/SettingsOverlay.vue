@@ -290,6 +290,24 @@ function saveAndClose() {
               </button>
             </div>
           </div>
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.globalShortcuts') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: settings.globalShortcuts }"
+                @click="settings.globalShortcuts = true"
+              >
+                {{ t('settings.launchOn') }}
+              </button>
+              <button
+                :class="{ active: !settings.globalShortcuts }"
+                @click="settings.globalShortcuts = false"
+              >
+                {{ t('settings.launchOff') }}
+              </button>
+            </div>
+          </div>
+          <p v-if="settings.globalShortcuts" class="privacy">{{ t('settings.globalShortcutsHint') }}</p>
         </section>
       </div>
 
