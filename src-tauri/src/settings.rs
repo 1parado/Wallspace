@@ -1,27 +1,20 @@
 use crate::models::{CmdResult, Settings};
-use crate::paths;
+use crate::store;
 use serde_json::Value;
-use std::fs;
 use std::time::Duration;
 use tauri::AppHandle;
 
+const SETTINGS_KEY: &str = "settings";
+
 pub fn load(app: &AppHandle) -> Settings {
-    let Ok(path) = paths::settings_file(app) else {
-        return Settings::default();
-    };
-    match fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-        Err(_) => Settings::default(),
-    }
+    store::kv_get(app, SETTINGS_KEY)
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
 }
 
 pub fn save(app: &AppHandle, s: &Settings) -> CmdResult<()> {
-    let path = paths::settings_file(app)?;
-    let tmp = path.with_extension("json.tmp");
-    let content = serde_json::to_string_pretty(s).map_err(|e| format!("序列化失败: {e}"))?;
-    fs::write(&tmp, content).map_err(|e| format!("写入失败: {e}"))?;
-    fs::rename(&tmp, &path).map_err(|e| format!("保存失败: {e}"))?;
-    Ok(())
+    let text = serde_json::to_string_pretty(s).map_err(|e| format!("序列化失败: {e}"))?;
+    store::kv_set(app, SETTINGS_KEY, &text)
 }
 
 /// 规整 Base URL：去尾部斜杠；若未以 /v1 结尾则自动补上（兼容用户填写裸域名）。

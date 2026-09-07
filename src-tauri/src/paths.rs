@@ -18,11 +18,3 @@ pub fn ensure_dirs(root: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(root.join("adapted")).map_err(|e| format!("创建目录失败: {e}"))?;
     Ok(())
 }
-
-pub fn library_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(data_root(app)?.join("library.json"))
-}
-
-pub fn settings_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(data_root(app)?.join("settings.json"))
-}

@@ -9,6 +9,7 @@ mod library;
 mod models;
 mod paths;
 mod settings;
+mod store;
 mod tray;
 mod wallpaper;
 
@@ -211,6 +212,7 @@ pub fn run() {
             None,
         ))
         .setup(|app| {
+            store::init(app.handle())?;
             autoswitch::spawn(app.handle().clone());
             tray::init(app)?;
             Ok(())

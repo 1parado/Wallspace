@@ -1,51 +1,25 @@
 use crate::models::{now_ms, CmdResult, FailedImport, ImportReport, WallpaperItem};
 use crate::paths;
-use serde::{Deserialize, Serialize};
+use crate::store;
+use rusqlite::params;
 use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use tauri::AppHandle;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct LibraryFile {
-    version: u32,
-    items: Vec<WallpaperItem>,
-}
-
-impl Default for LibraryFile {
-    fn default() -> Self {
-        Self {
-            version: 1,
-            items: Vec::new(),
-        }
-    }
-}
-
+/// 全量加载媒体库（created_at 倒序）。
 pub fn load(app: &AppHandle) -> Vec<WallpaperItem> {
-    let path = match paths::library_file(app) {
-        Ok(p) => p,
-        Err(_) => return Vec::new(),
-    };
-    match fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str::<LibraryFile>(&text)
-            .map(|f| f.items)
-            .unwrap_or_default(),
-        Err(_) => Vec::new(),
-    }
-}
-
-pub fn save(app: &AppHandle, items: &[WallpaperItem]) -> CmdResult<()> {
-    let path = paths::library_file(app)?;
-    let tmp = path.with_extension("json.tmp");
-    let content = serde_json::to_string_pretty(&LibraryFile {
-        version: 1,
-        items: items.to_vec(),
+    store::with(app, |c| {
+        let mut stmt = c.prepare(
+            "SELECT id,title,source,file_path,width,height,file_size,category,tags,palette,
+                    favorite,prompt,model,origin_url,created_at,applied_at
+             FROM items ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], store::row_to_item)?;
+        rows.collect()
     })
-    .map_err(|e| format!("序列化失败: {e}"))?;
-    fs::write(&tmp, content).map_err(|e| format!("写入失败: {e}"))?;
-    fs::rename(&tmp, &path).map_err(|e| format!("保存失败: {e}"))?;
-    Ok(())
+    .unwrap_or_default()
 }
 
 fn sniff_image_ext(bytes: &[u8]) -> Option<&'static str> {
@@ -160,9 +134,7 @@ pub fn add_image_bytes(
         applied_at: None,
     };
 
-    let mut items = load(app);
-    items.insert(0, item.clone());
-    save(app, &items)?;
+    store::with(app, |c| store::insert_item(c, &item))?;
     Ok(item)
 }
 
@@ -217,23 +189,28 @@ pub fn import_local_files(
 }
 
 pub fn update_item(app: &AppHandle, item: WallpaperItem) -> CmdResult<WallpaperItem> {
-    let mut items = load(app);
-    let idx = items
-        .iter()
-        .position(|i| i.id == item.id)
-        .ok_or_else(|| "条目不存在".to_string())?;
-    items[idx] = item.clone();
-    save(app, &items)?;
+    let exists = load(app).iter().any(|i| i.id == item.id);
+    if !exists {
+        return Err("条目不存在".to_string());
+    }
+    store::with(app, |c| store::insert_item(c, &item))?;
     Ok(item)
 }
 
 pub fn delete_item(app: &AppHandle, id: &str) -> CmdResult<()> {
-    let mut items = load(app);
-    let idx = items
-        .iter()
-        .position(|i| i.id == id)
-        .ok_or_else(|| "条目不存在".to_string())?;
-    let item = items.remove(idx);
+    let item = {
+        let items = load(app);
+        items
+            .into_iter()
+            .find(|i| i.id == id)
+            .ok_or_else(|| "条目不存在".to_string())?
+    };
+    store::with(app, |c| {
+        c.execute("DELETE FROM items WHERE id = ?1", [id])?;
+        // 同步清理集合引用，避免悬挂 id
+        c.execute("DELETE FROM collection_items WHERE item_id = ?1", [id])?;
+        Ok(())
+    })?;
 
     // 删除原图与适配缓存
     let _ = fs::remove_file(Path::new(&item.file_path));
@@ -247,14 +224,15 @@ pub fn delete_item(app: &AppHandle, id: &str) -> CmdResult<()> {
             }
         }
     }
-    save(app, &items)
+    Ok(())
 }
 
 pub fn touch_applied(app: &AppHandle, id: &str) -> CmdResult<()> {
-    let mut items = load(app);
-    if let Some(item) = items.iter_mut().find(|i| i.id == id) {
-        item.applied_at = Some(now_ms());
-        save(app, &items)?;
-    }
-    Ok(())
+    store::with(app, |c| {
+        c.execute(
+            "UPDATE items SET applied_at = ?1 WHERE id = ?2",
+            params![now_ms(), id],
+        )?;
+        Ok(())
+    })
 }

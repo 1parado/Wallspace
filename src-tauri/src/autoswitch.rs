@@ -10,15 +10,16 @@
 use crate::collections;
 use crate::library;
 use crate::models::{now_ms, CmdResult, Settings, WallpaperItem};
-use crate::paths;
 use crate::settings;
+use crate::store;
 use crate::wallpaper;
 use chrono::Timelike;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::AppHandle;
+
+const ROTATION_KEY: &str = "rotation";
 
 /// 轮换暂停标志（托盘切换；仅暂停定时轮换，不影响手动/托盘「下一张」）
 static PAUSED: AtomicBool = AtomicBool::new(false);
@@ -193,21 +194,12 @@ fn apply(app: &AppHandle, cfg: &Settings, item: &WallpaperItem) -> CmdResult<()>
 }
 
 fn load_state(app: &AppHandle) -> SwitchState {
-    let Ok(root) = paths::data_root(app) else {
-        return SwitchState::default();
-    };
-    match fs::read_to_string(root.join("rotation.json")) {
-        Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-        Err(_) => SwitchState::default(),
-    }
+    store::kv_get(app, ROTATION_KEY)
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
 }
 
 fn save_state(app: &AppHandle, s: &SwitchState) -> CmdResult<()> {
-    let root = paths::data_root(app)?;
-    let path = root.join("rotation.json");
-    let tmp = path.with_extension("json.tmp");
-    let content = serde_json::to_string_pretty(s).map_err(|e| format!("序列化失败: {e}"))?;
-    fs::write(&tmp, content).map_err(|e| format!("写入失败: {e}"))?;
-    fs::rename(&tmp, &path).map_err(|e| format!("保存失败: {e}"))?;
-    Ok(())
+    let text = serde_json::to_string_pretty(s).map_err(|e| format!("序列化失败: {e}"))?;
+    store::kv_set(app, ROTATION_KEY, &text)
 }
