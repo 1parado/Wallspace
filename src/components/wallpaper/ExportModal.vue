@@ -65,7 +65,13 @@ const offset = ref({ x: 0.5, y: 0.5 });
 const busy = ref(false);
 const exportFormat = ref<'jpg' | 'png'>('jpg');
 
-// 记住上次导出设置（预设 / 模式 / 格式）
+// 图像调整（百分比：亮度/对比度 -50..50，饱和度 -100..100，模糊 0..100）
+const brightness = ref(0);
+const contrast = ref(0);
+const saturation = ref(0);
+const blurv = ref(0);
+
+// 记住上次导出设置（预设 / 模式 / 格式 / 调整）
 const LAST_EXPORT_KEY = 'wallspace.lastExport';
 try {
   const last = JSON.parse(localStorage.getItem(LAST_EXPORT_KEY) ?? 'null');
@@ -73,6 +79,16 @@ try {
     if (ALL_PRESETS.some((p) => p.id === last.presetId)) presetId.value = last.presetId;
     if (last.mode === 'fit') mode.value = 'fit';
     if (last.format === 'png') exportFormat.value = 'png';
+    const clamp = (v: unknown, min: number, max: number) =>
+      typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null;
+    const b = clamp(last.brightness, -50, 50);
+    if (b !== null) brightness.value = b;
+    const c = clamp(last.contrast, -50, 50);
+    if (c !== null) contrast.value = c;
+    const s = clamp(last.saturation, -100, 100);
+    if (s !== null) saturation.value = s;
+    const bl = clamp(last.blurv, 0, 100);
+    if (bl !== null) blurv.value = bl;
   }
 } catch {
   /* 忽略损坏的历史记录 */
@@ -81,9 +97,44 @@ try {
 function rememberLast() {
   localStorage.setItem(
     LAST_EXPORT_KEY,
-    JSON.stringify({ presetId: presetId.value, mode: mode.value, format: exportFormat.value })
+    JSON.stringify({
+      presetId: presetId.value,
+      mode: mode.value,
+      format: exportFormat.value,
+      brightness: brightness.value,
+      contrast: contrast.value,
+      saturation: saturation.value,
+      blurv: blurv.value,
+    })
   );
 }
+
+const hasAdjust = computed(() => !!(brightness.value || contrast.value || saturation.value || blurv.value));
+
+function resetAdjust() {
+  brightness.value = 0;
+  contrast.value = 0;
+  saturation.value = 0;
+  blurv.value = 0;
+}
+
+/** 传给后端的调整参数 */
+const adjustParams = computed(() => ({
+  brightness: Math.round(brightness.value * 2.55),
+  contrast: 1 + contrast.value / 100,
+  saturation: 1 + saturation.value / 100,
+  blur: blurv.value / 50,
+}));
+
+/** 实时预览：CSS filter 与后端 image-ops 参数一一对应 */
+const filterStyle = computed(() => {
+  const parts: string[] = [];
+  if (brightness.value) parts.push(`brightness(${1 + brightness.value / 100})`);
+  if (contrast.value) parts.push(`contrast(${1 + contrast.value / 100})`);
+  if (saturation.value) parts.push(`saturate(${1 + saturation.value / 100})`);
+  if (blurv.value) parts.push(`blur(${blurv.value / 50}px)`);
+  return parts.length ? { filter: parts.join(' ') } : {};
+});
 
 const preset = computed(() => ALL_PRESETS.find((p) => p.id === presetId.value)!);
 const ratioStyle = computed(() => ({ aspectRatio: `${preset.value.w} / ${preset.value.h}` }));
@@ -155,6 +206,7 @@ async function addToLibrary() {
       offsetY: offset.value.y,
       addToLibrary: true,
       format: exportFormat.value,
+      adjust: adjustParams.value,
     });
     rememberLast();
     await lib.refresh();
@@ -192,6 +244,7 @@ async function saveAs() {
       offsetY: offset.value.y,
       savePath: dest,
       format: exportFormat.value,
+      adjust: adjustParams.value,
     });
     rememberLast();
     ui.toast('success', t('export.toast.saved'));
@@ -261,7 +314,7 @@ async function exportPack() {
         >
           <img
             :src="assetUrl(item.filePath)"
-            :style="positionStyle"
+            :style="[positionStyle, filterStyle]"
             draggable="false"
           />
           <span v-if="preset.circle" class="circle-guide" />
@@ -311,6 +364,27 @@ async function exportPack() {
             <button :class="{ active: exportFormat === 'png' }" @click="exportFormat = 'png'">
               {{ t('export.fmtPng') }}
             </button>
+          </div>
+
+          <p class="label">
+            {{ t('export.adjust') }}
+            <button v-if="hasAdjust" class="reset-mini" @click="resetAdjust">
+              {{ t('export.resetAdjust') }}
+            </button>
+          </p>
+          <div class="adj-grid">
+            <span class="adj-name">{{ t('export.adjBrightness') }}</span>
+            <input v-model.number="brightness" type="range" min="-50" max="50" />
+            <span class="adj-val">{{ brightness > 0 ? '+' : '' }}{{ brightness }}</span>
+            <span class="adj-name">{{ t('export.adjContrast') }}</span>
+            <input v-model.number="contrast" type="range" min="-50" max="50" />
+            <span class="adj-val">{{ contrast > 0 ? '+' : '' }}{{ contrast }}</span>
+            <span class="adj-name">{{ t('export.adjSaturation') }}</span>
+            <input v-model.number="saturation" type="range" min="-100" max="100" />
+            <span class="adj-val">{{ saturation > 0 ? '+' : '' }}{{ saturation }}</span>
+            <span class="adj-name">{{ t('export.adjBlur') }}</span>
+            <input v-model.number="blurv" type="range" min="0" max="100" />
+            <span class="adj-val">{{ blurv ? (blurv / 50).toFixed(1) + 'px' : '0' }}</span>
           </div>
         </div>
       </div>
@@ -466,6 +540,42 @@ async function exportPack() {
   font-size: 11px;
   color: var(--text-3);
   line-height: 1.5;
+}
+
+.reset-mini {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--text-3);
+  text-decoration: underline dotted;
+  letter-spacing: normal;
+  text-transform: none;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.reset-mini:hover {
+  color: var(--text-1);
+}
+
+.adj-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.adj-grid input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent, #3b82f6);
+  cursor: pointer;
+}
+
+.adj-val {
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
 }
 
 .label {

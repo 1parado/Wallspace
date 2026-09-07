@@ -110,6 +110,17 @@ export interface ExportResult {
   item: WallpaperItem | null;
 }
 
+export interface ExportAdjust {
+  /** 加性亮度偏移（-128..128） */
+  brightness?: number;
+  /** 对比度系数（0.5..1.5） */
+  contrast?: number;
+  /** 饱和度系数（0..2） */
+  saturation?: number;
+  /** 高斯模糊 sigma（0..8） */
+  blur?: number;
+}
+
 /** 按预设尺寸裁剪导出：mode 'cover'（带取景偏移）| 'fit'；format 'jpg' | 'png'（png 的 fit 模式四边透明） */
 export async function exportWallpaper(params: {
   id: string;
@@ -122,7 +133,9 @@ export async function exportWallpaper(params: {
   savePath?: string;
   title?: string;
   format?: 'jpg' | 'png';
+  adjust?: ExportAdjust;
 }): Promise<ExportResult> {
+  const adj = params.adjust ?? {};
   return invoke('export_wallpaper', {
     id: params.id,
     width: params.width,
@@ -134,5 +147,9 @@ export async function exportWallpaper(params: {
     savePath: params.savePath ?? null,
     title: params.title ?? null,
     format: params.format ?? 'jpg',
+    brightness: adj.brightness ?? 0,
+    contrast: adj.contrast ?? 1,
+    saturation: adj.saturation ?? 1,
+    blur: adj.blur ?? 0,
   });
 }

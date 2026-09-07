@@ -155,12 +155,30 @@ async fn export_wallpaper(
     save_path: Option<String>,
     title: Option<String>,
     format: Option<String>,
+    brightness: Option<i32>,
+    contrast: Option<f32>,
+    saturation: Option<f32>,
+    blur: Option<f32>,
 ) -> CmdResult<export::ExportResult> {
     let item = library::load(&app)
         .into_iter()
         .find(|i| i.id == id)
         .ok_or_else(|| "条目不存在".to_string())?;
     tauri::async_runtime::spawn_blocking(move || {
+        let adjust = if brightness.unwrap_or(0) != 0
+            || (contrast.unwrap_or(1.0) - 1.0).abs() > f32::EPSILON
+            || (saturation.unwrap_or(1.0) - 1.0).abs() > f32::EPSILON
+            || blur.unwrap_or(0.0) > f32::EPSILON
+        {
+            Some(export::Adjust {
+                brightness: brightness.unwrap_or(0).clamp(-128, 128),
+                contrast: contrast.unwrap_or(1.0).clamp(0.1, 3.0),
+                saturation: saturation.unwrap_or(1.0).clamp(0.0, 3.0),
+                blur: blur.unwrap_or(0.0).clamp(0.0, 8.0),
+            })
+        } else {
+            None
+        };
         export::export(
             &app,
             &item,
@@ -173,6 +191,7 @@ async fn export_wallpaper(
             save_path,
             title,
             format.as_deref().unwrap_or("jpg"),
+            adjust,
         )
     })
     .await

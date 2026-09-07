@@ -23,6 +23,56 @@ pub struct ExportResult {
     pub item: Option<WallpaperItem>,
 }
 
+/// 图像调整参数（导出前的色彩/模糊处理）。
+#[derive(Debug, Clone, Copy)]
+pub struct Adjust {
+    /// 加性亮度偏移（-128..128，0 = 不变）
+    pub brightness: i32,
+    /// 对比度系数（0.5..1.5，1.0 = 不变）
+    pub contrast: f32,
+    /// 饱和度系数（0..2，1.0 = 不变）
+    pub saturation: f32,
+    /// 高斯模糊 sigma（0..8，0 = 不模糊）
+    pub blur: f32,
+}
+
+impl Adjust {
+    fn is_default(&self) -> bool {
+        self.brightness == 0
+            && (self.contrast - 1.0).abs() < f32::EPSILON
+            && (self.saturation - 1.0).abs() < f32::EPSILON
+            && self.blur <= f32::EPSILON
+    }
+}
+
+/// 应用图像调整（在裁剪后、编码前执行）。
+fn apply_adjust(img: DynamicImage, adj: &Adjust) -> DynamicImage {
+    let mut out = img;
+    if adj.brightness != 0 {
+        out = out.brighten(adj.brightness);
+    }
+    if (adj.contrast - 1.0).abs() > f32::EPSILON {
+        out = out.adjust_contrast(adj.contrast);
+    }
+    if (adj.saturation - 1.0).abs() > f32::EPSILON {
+        // 线性插值到灰度：factor 0 = 全灰，2 = 双倍饱和
+        let mut rgba = out.to_rgba8();
+        for px in rgba.pixels_mut() {
+            let (r, g, b) = (px[0] as f32, px[1] as f32, px[2] as f32);
+            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            let mix = |c: f32| (gray + (c - gray) * adj.saturation).clamp(0.0, 255.0) as u8;
+            px[0] = mix(r);
+            px[1] = mix(g);
+            px[2] = mix(b);
+        }
+        out = DynamicImage::ImageRgba8(rgba);
+    }
+    if adj.blur > f32::EPSILON {
+        out = out.blur(adj.blur);
+    }
+    out
+}
+
 /// 按目标尺寸裁剪导出。
 /// mode: "cover"（可带 offset_x/offset_y 取景偏移）| "fit"（黑边完整显示）。
 #[allow(clippy::too_many_arguments)]
@@ -38,24 +88,36 @@ pub fn export(
     save_path: Option<String>,
     title: Option<String>,
     format: &str,
+    adjust: Option<Adjust>,
 ) -> CmdResult<ExportResult> {
     let img = image::open(PathBuf::from(&item.file_path))
         .map_err(|e| format!("读取图片失败: {e}"))?;
     let tw = width.max(1);
     let th = height.max(1);
     let is_png = format == "png";
+    let adj = adjust.unwrap_or(Adjust {
+        brightness: 0,
+        contrast: 1.0,
+        saturation: 1.0,
+        blur: 0.0,
+    });
+    let has_adj = !adj.is_default();
 
     let out = if mode == "fit" {
         if is_png {
-            fit_canvas_transparent(img, tw, th)
+            fit_canvas_transparent(img, tw, th, if has_adj { Some(&adj) } else { None })
         } else {
-            wallpaper::fit_canvas(img, tw, th)
+            let o = wallpaper::fit_canvas(img, tw, th);
+            if has_adj { apply_adjust(o, &adj) } else { o }
         }
     } else {
-        wallpaper::cover_crop_at(img, tw, th, offset_x, offset_y)
+        let o = wallpaper::cover_crop_at(img, tw, th, offset_x, offset_y);
+        if has_adj { apply_adjust(o, &adj) } else { o }
     };
 
-    // 按格式编码：JPG 固定 quality 95；PNG 无损（fit 模式四边透明）
+    // 按格式编码：JPG 固定 quality 95；PNG 无损（fit 模式四边透明）。
+    // 调整中的饱和度会产生 RGBA，JPEG 编码前转回 RGB。
+    let out = if is_png { out } else { DynamicImage::ImageRgb8(out.to_rgb8()) };
     let encoded: Vec<u8> = if is_png {
         let mut buf = std::io::Cursor::new(Vec::new());
         out.write_to(&mut buf, image::ImageFormat::Png)
@@ -118,23 +180,35 @@ pub fn export(
 }
 
 /// fit 适配（透明底）：目标尺寸 RGBA 透明画布，完整居中显示。
-/// 仅 PNG 导出使用，避免黑边。
-fn fit_canvas_transparent(img: DynamicImage, tw: u32, th: u32) -> DynamicImage {
+/// 仅 PNG 导出使用，避免黑边；调整应用于缩放后的内容（不动透明区）。
+fn fit_canvas_transparent(
+    img: DynamicImage,
+    tw: u32,
+    th: u32,
+    adj: Option<&Adjust>,
+) -> DynamicImage {
     if img.width() == tw && img.height() == th {
-        return img;
+        return match adj {
+            Some(a) => apply_adjust(img, a),
+            None => img,
+        };
     }
     let scale = f32::min(tw as f32 / img.width() as f32, th as f32 / img.height() as f32);
     let nw = ((img.width() as f32 * scale).round() as u32).max(1);
     let nh = ((img.height() as f32 * scale).round() as u32).max(1);
-    let scaled = img
-        .resize_exact(nw, nh, image::imageops::FilterType::Lanczos3)
-        .to_rgba8();
+    let scaled_dyn = img.resize_exact(nw, nh, image::imageops::FilterType::Lanczos3);
+    let scaled_dyn = match adj {
+        Some(a) => apply_adjust(scaled_dyn, a),
+        None => scaled_dyn,
+    };
+    let scaled = scaled_dyn.to_rgba8();
     let mut canvas = image::DynamicImage::new_rgba8(tw, th);
     image::imageops::overlay(&mut canvas, &scaled, ((tw - nw) / 2) as i64, ((th - nh) / 2) as i64);
     canvas
 }
 
-fn sanitize(name: &str) -> String {    let cleaned: String = name
+fn sanitize(name: &str) -> String {
+    let cleaned: String = name
         .chars()
         .map(|c| {
             if c.is_alphanumeric() || c == '-' || c == '_' {
