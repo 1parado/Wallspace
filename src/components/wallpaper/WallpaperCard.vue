@@ -5,6 +5,7 @@ import { assetUrl } from '../../lib/api';
 import { useLibraryStore } from '../../stores/library';
 import { useUiStore } from '../../stores/ui';
 import { useI18n } from '../../lib/i18n';
+import { displayCategory } from '../../lib/categoryTree';
 import Icon from '../common/Icon.vue';
 
 const props = withDefaults(
@@ -25,7 +26,7 @@ const sizeLabel = computed(() => {
 });
 const metaLabel = computed(
   () =>
-    `${props.item.category ? t(`cat.${props.item.category.toLowerCase()}`) : t('cat.uncategorized')} · ${props.item.width}×${props.item.height} · ${sizeLabel.value}`
+    `${displayCategory(props.item.category, t, t('cat.uncategorized'))} · ${props.item.width}×${props.item.height} · ${sizeLabel.value}`
 );
 </script>
 

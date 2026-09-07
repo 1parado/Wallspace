@@ -4,7 +4,7 @@ import type { WallpaperItem } from '../types';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
-import { buildCategoryTree, matchCategory, type CatNode } from '../lib/categoryTree';
+import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 
@@ -118,7 +118,7 @@ const isFiltering = computed(
 );
 
 function catLabel(key: string): string {
-  return key.includes('/') ? key.split('/').pop()! : t('cat.' + key.toLowerCase());
+  return displayCategory(key, t, t('cat.uncategorized'));
 }
 
 function toggleSource(s: 'ai' | 'url' | 'local') {

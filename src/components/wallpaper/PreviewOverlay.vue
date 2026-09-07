@@ -5,7 +5,7 @@ import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { assetUrl, revealItem } from '../../lib/api';
-import { buildCategoryTree, type CatNode } from '../../lib/categoryTree';
+import { buildCategoryTree, displayCategory, type CatNode } from '../../lib/categoryTree';
 import Icon from '../common/Icon.vue';
 
 const ui = useUiStore();
@@ -195,7 +195,7 @@ function openSource() {
           />
           <p class="meta">
             <button class="cat" :class="{ editing: editCategory }" @click="editCategory = !editCategory">
-              {{ item.category ? t(`cat.${item.category.toLowerCase()}`) : t('cat.uncategorized') }}
+              {{ displayCategory(item.category, t, t('cat.uncategorized')) }}
             </button>
             <span class="dot">·</span>
             <span>{{ item.width }}×{{ item.height }}</span>

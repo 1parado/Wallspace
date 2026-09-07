@@ -5,7 +5,7 @@ import { useLibraryStore } from '../../stores/library';
 import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
-import { buildCategoryTree, matchCategory, type CatNode } from '../../lib/categoryTree';
+import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../../lib/categoryTree';
 import { open } from '@tauri-apps/plugin-dialog';
 import Icon from '../common/Icon.vue';
 
@@ -60,11 +60,7 @@ function isTreeActive(node: CatNode): boolean {
 }
 
 function catLabel(key: string | null): string {
-  if (!key) return t('cat.uncategorized');
-  // 子分类（无内置翻译）直接显示最后一段原名
-  return key.includes('/')
-    ? key.split('/').pop()!
-    : t('cat.' + key.toLowerCase());
+  return displayCategory(key, t, t('cat.uncategorized'));
 }
 
 function goCategory(cat: string) {

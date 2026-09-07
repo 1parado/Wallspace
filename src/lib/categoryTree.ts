@@ -36,6 +36,30 @@ export function matchCategory(
   return c === filter || c.startsWith(filter + '/');
 }
 
+/**
+ * 统一的分类显示名：
+ * - 未分类（null/''/空白）→ uncategorizedLabel
+ * - 顶层知名分类（cat.xxx 有翻译）→ 翻译名
+ * - 子分类 / 自定义分类 → 最后一段原名（保留大小写）
+ */
+export function displayCategory(
+  key: string | null | undefined,
+  t: (k: string) => string,
+  uncategorizedLabel: string
+): string {
+  const c = key?.trim();
+  if (!c) return uncategorizedLabel;
+  const segs = c.split('/');
+  const last = segs[segs.length - 1];
+  if (segs.length === 1) {
+    const k = 'cat.' + c.toLowerCase();
+    // t() 对缺失键回退为键的最后一段（即小写原名），据此判断是否有真实翻译
+    const tr = t(k);
+    if (tr !== c.toLowerCase()) return tr;
+  }
+  return last;
+}
+
 function parentOf(path: string): string | null {
   return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : null;
 }
