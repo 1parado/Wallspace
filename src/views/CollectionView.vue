@@ -138,6 +138,32 @@ function onCellClickCapture(id: string, e: MouseEvent) {
   toggleSelect(id);
 }
 
+// —— 批量加入 / 移动到其他集合 ——
+const batchTarget = ref('');
+
+const otherCollections = computed(() =>
+  collections.collections.filter((c) => c.id !== ui.activeCollectionId)
+);
+
+const selectedList = computed(() => [...selectedIds.value]);
+
+function resetBatch() {
+  batchTarget.value = '';
+  selectedIds.value = new Set();
+}
+
+async function batchAdd() {
+  if (!batchTarget.value || !selectedList.value.length) return;
+  await collections.addItems(batchTarget.value, selectedList.value);
+  resetBatch();
+}
+
+async function batchMove() {
+  if (!batchTarget.value || !collection.value || !selectedList.value.length) return;
+  await collections.moveItems(collection.value.id, batchTarget.value, selectedList.value);
+  resetBatch();
+}
+
 // —— 封面与快速应用 ——
 /** 自定义封面优先，未设置或已失效时回退到集合首图 */
 const cover = computed(() => {
@@ -184,13 +210,27 @@ function ctxSetCover() {
         {{ t('collections.reorderHint') }}
       </span>
       <div class="head-actions">
-        <button
-          v-if="managing && selectedIds.size"
-          class="pill danger"
-          @click="removeSelected"
-        >
-          {{ t('collections.removeSelected', { n: selectedIds.size }) }}
-        </button>
+        <template v-if="managing && selectedIds.size">
+          <select v-model="batchTarget" class="pill batch-select">
+            <option value="" disabled>{{ t('collections.pickTarget') }}</option>
+            <option v-for="c in otherCollections" :key="c.id" :value="c.id">
+              {{ c.name }}
+            </option>
+          </select>
+          <button class="pill" :disabled="!batchTarget || !otherCollections.length" @click="batchAdd">
+            {{ t('collections.batchAdd') }}
+          </button>
+          <button class="pill" :disabled="!batchTarget || !otherCollections.length" @click="batchMove">
+            {{ t('collections.batchMove') }}
+          </button>
+          <button
+            v-if="selectedIds.size"
+            class="pill danger"
+            @click="removeSelected"
+          >
+            {{ t('collections.removeSelected', { n: selectedIds.size }) }}
+          </button>
+        </template>
         <button
           class="pill"
           :class="{ active: managing }"
@@ -352,6 +392,14 @@ function ctxSetCover() {
   color: var(--text-1);
   background: var(--fill-active);
   border-color: var(--stroke-strong);
+}
+
+.batch-select {
+  max-width: 160px;
+  background: transparent;
+  color: var(--text-2);
+  outline: none;
+  cursor: pointer;
 }
 
 .pill.primary {

@@ -78,6 +78,36 @@ export const useCollectionsStore = defineStore('collections', {
       c.itemIds = c.itemIds.filter((id) => id !== itemId);
       await this.persist();
     },
+    /** 批量加入集合（自动去重），单条 toast 汇总 */
+    async addItems(collectionId: string, itemIds: string[]) {
+      const ui = useUiStore();
+      const { t } = useI18n();
+      const c = this.byId(collectionId);
+      if (!c || !itemIds.length) return;
+      let added = 0;
+      for (const id of itemIds) {
+        if (!c.itemIds.includes(id)) {
+          c.itemIds.unshift(id);
+          added++;
+        }
+      }
+      if (!added) return;
+      try {
+        await this.persist();
+        ui.toast('success', t('toast.batchAdded', { n: added, name: c.name }));
+      } catch (e) {
+        ui.toast('error', String(e));
+      }
+    },
+    /** 批量移动：加入目标集合并从源集合移除 */
+    async moveItems(fromId: string, toId: string, itemIds: string[]) {
+      if (fromId === toId || !itemIds.length) return;
+      await this.addItems(toId, itemIds);
+      const from = this.byId(fromId);
+      if (!from) return;
+      from.itemIds = from.itemIds.filter((id) => !itemIds.includes(id));
+      await this.persist();
+    },
     /** 拖拽排序：用新的 id 顺序整体替换并持久化 */
     async reorder(collectionId: string, newItemIds: string[]) {
       const c = this.byId(collectionId);
