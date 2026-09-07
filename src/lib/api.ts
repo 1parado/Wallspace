@@ -104,3 +104,33 @@ export async function saveCollections(collections: Collection[]): Promise<void> 
 export async function createCollection(name: string): Promise<Collection> {
   return invoke('create_collection', { name });
 }
+
+export interface ExportResult {
+  path: string;
+  item: WallpaperItem | null;
+}
+
+/** 按预设尺寸裁剪导出：mode 'cover'（带取景偏移）| 'fit' */
+export async function exportWallpaper(params: {
+  id: string;
+  width: number;
+  height: number;
+  mode?: 'cover' | 'fit';
+  offsetX?: number;
+  offsetY?: number;
+  addToLibrary?: boolean;
+  savePath?: string;
+  title?: string;
+}): Promise<ExportResult> {
+  return invoke('export_wallpaper', {
+    id: params.id,
+    width: params.width,
+    height: params.height,
+    mode: params.mode ?? 'cover',
+    offsetX: params.offsetX ?? 0.5,
+    offsetY: params.offsetY ?? 0.5,
+    addToLibrary: params.addToLibrary ?? false,
+    savePath: params.savePath ?? null,
+    title: params.title ?? null,
+  });
+}

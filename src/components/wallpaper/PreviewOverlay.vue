@@ -6,6 +6,7 @@ import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { assetUrl, revealItem } from '../../lib/api';
 import { buildCategoryTree, displayCategory, type CatNode } from '../../lib/categoryTree';
+import ExportModal from './ExportModal.vue';
 import Icon from '../common/Icon.vue';
 
 const ui = useUiStore();
@@ -20,6 +21,7 @@ const editingTitle = ref(false);
 const titleDraft = ref('');
 const confirmingDelete = ref(false);
 const editCategory = ref(false);
+const showExport = ref(false);
 
 function startEdit() {
   if (!item.value) return;
@@ -56,6 +58,10 @@ function onKey(e: KeyboardEvent) {
     !!target &&
     (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
   if (e.key === 'Escape') {
+    if (showExport.value) {
+      showExport.value = false;
+      return;
+    }
     if (addToOpen.value) {
       addToOpen.value = false;
       return;
@@ -67,7 +73,7 @@ function onKey(e: KeyboardEvent) {
     ui.previewId = null;
     return;
   }
-  if (typing || editingTitle.value) return;
+  if (typing || editingTitle.value || showExport.value) return;
   // ←/→ 在当前库顺序内切换预览
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     const items = lib.items;
@@ -341,7 +347,18 @@ function openSource() {
               <p v-else class="add-empty">{{ t('collections.noneYet') }}</p>
             </div>
           </div>
-          <button class="icon-btn" :title="t('preview.folder')" @click="openInExplorer">
+          <button
+            class="icon-btn"
+            :title="t('export.open')"
+            @click="showExport = true"
+          >
+            <Icon name="download" :size="16" />
+          </button>
+          <button
+            class="icon-btn"
+            :title="t('preview.folder')"
+            @click="openInExplorer"
+          >
             <Icon name="external" :size="16" />
           </button>
           <button
@@ -380,6 +397,12 @@ function openSource() {
         </div>
       </div>
     </div>
+
+    <ExportModal
+      v-if="showExport"
+      :item="item"
+      @close="showExport = false"
+    />
   </div>
 </template>
 

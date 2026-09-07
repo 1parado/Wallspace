@@ -1,6 +1,7 @@
 mod auto_classify;
 mod collections;
 mod download;
+mod export;
 mod generate;
 mod grok_imagine;
 mod library;
@@ -140,6 +141,42 @@ fn reveal_item(path: String) -> CmdResult<()> {
         .map_err(|e| format!("打开资源管理器失败: {e}"))
 }
 
+/// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
+#[tauri::command]
+async fn export_wallpaper(
+    app: AppHandle,
+    id: String,
+    width: u32,
+    height: u32,
+    mode: Option<String>,
+    offset_x: Option<f32>,
+    offset_y: Option<f32>,
+    add_to_library: Option<bool>,
+    save_path: Option<String>,
+    title: Option<String>,
+) -> CmdResult<export::ExportResult> {
+    let item = library::load(&app)
+        .into_iter()
+        .find(|i| i.id == id)
+        .ok_or_else(|| "条目不存在".to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        export::export(
+            &app,
+            &item,
+            width,
+            height,
+            mode.as_deref().unwrap_or("cover"),
+            offset_x.unwrap_or(0.5),
+            offset_y.unwrap_or(0.5),
+            add_to_library.unwrap_or(false),
+            save_path,
+            title,
+        )
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {e}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     wallpaper::set_dpi_awareness();
@@ -163,7 +200,8 @@ pub fn run() {
             list_collections,
             save_collections,
             create_collection,
-            reveal_item
+            reveal_item,
+            export_wallpaper
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

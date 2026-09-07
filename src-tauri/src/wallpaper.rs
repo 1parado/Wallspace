@@ -118,6 +118,12 @@ pub fn set_dpi_awareness() {
 
 /// cover 裁剪：等比缩放至覆盖目标尺寸后居中裁剪。
 fn cover_crop(img: DynamicImage, tw: u32, th: u32) -> DynamicImage {
+    cover_crop_at(img, tw, th, 0.5, 0.5)
+}
+
+/// cover 裁剪 + 归一化取景偏移（0..1，0.5/0.5 = 居中）。
+/// 偏移只在缩放后存在溢出的轴上生效，用于导出时自定义构图。
+pub fn cover_crop_at(img: DynamicImage, tw: u32, th: u32, ox: f32, oy: f32) -> DynamicImage {
     if img.width() == tw && img.height() == th {
         return img;
     }
@@ -125,11 +131,15 @@ fn cover_crop(img: DynamicImage, tw: u32, th: u32) -> DynamicImage {
     let nw = ((img.width() as f32 * scale).round() as u32).max(tw);
     let nh = ((img.height() as f32 * scale).round() as u32).max(th);
     let scaled = img.resize_exact(nw, nh, image::imageops::FilterType::Lanczos3);
-    scaled.crop_imm((nw - tw) / 2, (nh - th) / 2, tw, th)
+    let max_x = (nw - tw) as f32;
+    let max_y = (nh - th) as f32;
+    let x = (max_x * ox.clamp(0.0, 1.0)).round() as u32;
+    let y = (max_y * oy.clamp(0.0, 1.0)).round() as u32;
+    scaled.crop_imm(x, y, tw, th)
 }
 
 /// fit 适配：目标尺寸黑色画布，完整居中显示。
-fn fit_canvas(img: DynamicImage, tw: u32, th: u32) -> DynamicImage {
+pub(crate) fn fit_canvas(img: DynamicImage, tw: u32, th: u32) -> DynamicImage {
     if img.width() == tw && img.height() == th {
         return img;
     }
