@@ -1,15 +1,17 @@
 <script setup lang="ts">
 /**
- * ExportModal —— 「导出为…」裁剪导出弹窗（阶段 1：本地裁剪导出）。
+ * ExportModal —— 「导出为…」裁剪导出弹窗。
  *
- * - 预设：头像 1:1（圆形预览）/ 社交竖图 4:5 / 手机 9:16 / 桌面 16:9 / 平板 4:3
+ * - 通用预设：头像 1:1（圆形预览）/ 社交竖图 4:5 / 手机 9:16 / 桌面 16:9 / 平板 4:3
+ * - 平台预设（阶段 2 第一步）：GitHub / B站 / 微博 / 抖音 头像与 Cover，
+ *   导出后可一键打开对应平台上传页（半自动流），并支持整套图包批量导出
  * - cover 模式：拖拽取景（归一化偏移交给后端 cover_crop_at）；fit 模式：黑边完整显示
  * - 出口：加入媒体库（source='export'）或系统「另存为…」
  */
 import { computed, ref } from 'vue';
 import type { WallpaperItem } from '../../types';
 import { exportWallpaper, assetUrl } from '../../lib/api';
-import { save } from '@tauri-apps/plugin-dialog';
+import { save, open } from '@tauri-apps/plugin-dialog';
 import { useLibraryStore } from '../../stores/library';
 import { useUiStore } from '../../stores/ui';
 import { useI18n } from '../../lib/i18n';
@@ -28,22 +30,41 @@ interface Preset {
   w: number;
   h: number;
   circle?: boolean;
+  group: 'general' | 'platform';
+  uploadUrl?: string;
 }
 
-const PRESETS: Preset[] = [
-  { id: 'avatar', labelKey: 'export.preset.avatar', w: 800, h: 800, circle: true },
-  { id: 'social', labelKey: 'export.preset.social', w: 1080, h: 1350 },
-  { id: 'phone', labelKey: 'export.preset.phone', w: 1080, h: 1920 },
-  { id: 'desktop', labelKey: 'export.preset.desktop', w: 1920, h: 1080 },
-  { id: 'tablet', labelKey: 'export.preset.tablet', w: 1024, h: 768 },
+const GENERAL_PRESETS: Preset[] = [
+  { id: 'avatar', labelKey: 'export.preset.avatar', w: 800, h: 800, circle: true, group: 'general' },
+  { id: 'social', labelKey: 'export.preset.social', w: 1080, h: 1350, group: 'general' },
+  { id: 'phone', labelKey: 'export.preset.phone', w: 1080, h: 1920, group: 'general' },
+  { id: 'desktop', labelKey: 'export.preset.desktop', w: 1920, h: 1080, group: 'general' },
+  { id: 'tablet', labelKey: 'export.preset.tablet', w: 1024, h: 768, group: 'general' },
 ];
+
+/** 平台预设：尺寸为常用推荐值，实际要求以上传页提示为准 */
+const PLATFORM_PRESETS: Preset[] = [
+  { id: 'github', labelKey: 'export.preset.github', w: 500, h: 500, circle: true, group: 'platform', uploadUrl: 'https://github.com/settings/profile' },
+  { id: 'bilibili', labelKey: 'export.preset.bilibili', w: 512, h: 512, circle: true, group: 'platform', uploadUrl: 'https://account.bilibili.com/face' },
+  { id: 'weibo', labelKey: 'export.preset.weibo', w: 180, h: 180, circle: true, group: 'platform', uploadUrl: 'https://account.weibo.com/set' },
+  { id: 'douyin', labelKey: 'export.preset.douyin', w: 512, h: 512, circle: true, group: 'platform', uploadUrl: 'https://www.douyin.com/' },
+  { id: 'bili-cover', labelKey: 'export.preset.biliCover', w: 2560, h: 400, group: 'platform', uploadUrl: 'https://space.bilibili.com/' },
+  { id: 'weibo-cover', labelKey: 'export.preset.weiboCover', w: 980, h: 300, group: 'platform', uploadUrl: 'https://account.weibo.com/set' },
+];
+
+const ALL_PRESETS: Preset[] = [...GENERAL_PRESETS, ...PLATFORM_PRESETS];
+
+const group = ref<'general' | 'platform'>('general');
+const shownPresets = computed(() =>
+  group.value === 'general' ? GENERAL_PRESETS : PLATFORM_PRESETS
+);
 
 const presetId = ref('desktop');
 const mode = ref<'cover' | 'fit'>('cover');
 const offset = ref({ x: 0.5, y: 0.5 });
 const busy = ref(false);
 
-const preset = computed(() => PRESETS.find((p) => p.id === presetId.value)!);
+const preset = computed(() => ALL_PRESETS.find((p) => p.id === presetId.value)!);
 const ratioStyle = computed(() => ({ aspectRatio: `${preset.value.w} / ${preset.value.h}` }));
 const positionStyle = computed(
   () =>
@@ -149,6 +170,39 @@ async function saveAs() {
     busy.value = false;
   }
 }
+
+/** 半自动流：导出后跳转平台上传页 */
+function openUploadPage() {
+  if (preset.value.uploadUrl) window.open(preset.value.uploadUrl, '_blank');
+}
+
+/** 整套图包：把全部平台预设一次性导出到所选文件夹 */
+async function exportPack() {
+  if (busy.value) return;
+  const dir = await open({ directory: true, title: t('export.saveTitle') });
+  if (!dir || typeof dir !== 'string') return;
+  const sep = dir.includes('\\') ? '\\' : '/';
+  const base = dir.replace(/[\\/]+$/, '');
+  busy.value = true;
+  try {
+    for (const p of PLATFORM_PRESETS) {
+      await exportWallpaper({
+        id: props.item.id,
+        width: p.w,
+        height: p.h,
+        mode: 'cover',
+        offsetX: 0.5,
+        offsetY: 0.5,
+        savePath: `${base}${sep}Wallspace_${p.id}_${p.w}x${p.h}.jpg`,
+      });
+    }
+    ui.toast('success', t('export.toast.batch', { n: PLATFORM_PRESETS.length }));
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    busy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -184,10 +238,19 @@ async function saveAs() {
 
         <!-- 预设与模式 -->
         <div class="controls">
+          <div class="segmented group-tabs">
+            <button :class="{ active: group === 'general' }" @click="group = 'general'">
+              {{ t('export.groupGeneral') }}
+            </button>
+            <button :class="{ active: group === 'platform' }" @click="group = 'platform'">
+              {{ t('export.groupPlatform') }}
+            </button>
+          </div>
+          <p v-if="group === 'platform'" class="spec-note">{{ t('export.specNote') }}</p>
           <p class="label">{{ t('export.presets') }}</p>
           <div class="preset-grid">
             <button
-              v-for="p in PRESETS"
+              v-for="p in shownPresets"
               :key="p.id"
               class="preset-chip"
               :class="{ active: presetId === p.id }"
@@ -213,6 +276,23 @@ async function saveAs() {
       <div class="modal-foot">
         <span class="file-name">{{ fileName }}</span>
         <div class="foot-actions">
+          <button
+            v-if="group === 'platform'"
+            class="pill"
+            :disabled="busy"
+            :title="t('export.specNote')"
+            @click="exportPack"
+          >
+            {{ t('export.batch', { n: PLATFORM_PRESETS.length }) }}
+          </button>
+          <button
+            v-if="preset.uploadUrl"
+            class="pill"
+            :disabled="busy"
+            @click="openUploadPage"
+          >
+            {{ t('export.uploadPage') }}
+          </button>
           <button class="pill" :disabled="busy" @click="saveAs">{{ t('export.saveAs') }}</button>
           <button class="btn-primary" :disabled="busy" @click="addToLibrary">
             <Icon name="plus" :size="14" />
@@ -336,6 +416,16 @@ async function saveAs() {
   min-width: 0;
 }
 
+.group-tabs {
+  margin-bottom: 2px;
+}
+
+.spec-note {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
 .label {
   font-size: 11px;
   font-weight: 560;
@@ -424,6 +514,8 @@ async function saveAs() {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .pill {
