@@ -137,6 +137,7 @@ const titleDraft = ref('');
 const confirmingDelete = ref(false);
 const editCategory = ref(false);
 const showExport = ref(false);
+const showInfo = ref(false);
 
 function startEdit() {
   if (!item.value) return;
@@ -179,6 +180,10 @@ function onKey(e: KeyboardEvent) {
     }
     if (addToOpen.value) {
       addToOpen.value = false;
+      return;
+    }
+    if (showInfo.value) {
+      showInfo.value = false;
       return;
     }
     if (editingTitle.value) {
@@ -365,6 +370,44 @@ async function openInExplorer() {
   if (item.value) await revealItem(item.value.filePath);
 }
 
+// —— 详细信息面板 ——
+const fileName = computed(() => {
+  const p = item.value?.filePath ?? '';
+  return p.split(/[\\/]/).filter(Boolean).pop() ?? '';
+});
+
+function fmtTime(ts?: number): string {
+  if (!ts) return '';
+  return new Date(ts).toLocaleString();
+}
+
+const createdLabel = computed(() => (item.value ? fmtTime(item.value.createdAt) : ''));
+const appliedLabel = computed(() =>
+  item.value?.appliedAt ? fmtTime(item.value.appliedAt) : t('preview.never')
+);
+
+const tagsLabel = computed(() => {
+  const tags = item.value?.tags ?? [];
+  return tags.length ? tags.map((tg) => `#${tg}`).join(' ') : t('preview.none');
+});
+
+const collLabel = computed(() => {
+  if (!item.value) return '';
+  const names = collections.collectionsOf(item.value.id).map((c) => c.name);
+  return names.length ? names.join('、') : t('preview.none');
+});
+
+async function copyPath() {
+  const p = item.value?.filePath;
+  if (!p) return;
+  try {
+    await navigator.clipboard.writeText(p);
+    ui.toast('success', t('toast.pathCopied'));
+  } catch (e) {
+    ui.toast('error', String(e));
+  }
+}
+
 function openSource() {
   const url = item.value?.originUrl;
   if (url) window.open(url, '_blank');
@@ -519,6 +562,43 @@ function openSource() {
           >
             <Icon name="link" :size="16" />
           </button>
+          <div class="info-wrap">
+            <button
+              class="icon-btn"
+              :class="{ active: showInfo }"
+              :title="t('preview.info')"
+              @click="showInfo = !showInfo"
+            >
+              <Icon name="info" :size="16" />
+            </button>
+            <div v-if="showInfo" class="info-pop glass">
+              <div class="info-row">
+                <span class="k">{{ t('preview.fileName') }}</span>
+                <span class="v">{{ fileName }}</span>
+              </div>
+              <div class="info-row">
+                <span class="k">{{ t('preview.created') }}</span>
+                <span class="v">{{ createdLabel }}</span>
+              </div>
+              <div class="info-row">
+                <span class="k">{{ t('preview.applied') }}</span>
+                <span class="v">{{ appliedLabel }}</span>
+              </div>
+              <div class="info-row">
+                <span class="k">{{ t('preview.tagsLabel') }}</span>
+                <span class="v">{{ tagsLabel }}</span>
+              </div>
+              <div class="info-row">
+                <span class="k">{{ t('preview.collectionsLabel') }}</span>
+                <span class="v">{{ collLabel }}</span>
+              </div>
+              <button class="info-path" :title="t('preview.copyPath')" @click="copyPath">
+                <span class="k">{{ t('preview.pathLabel') }}</span>
+                <span class="v path">{{ item.filePath }}</span>
+                <Icon name="copy" :size="12" />
+              </button>
+            </div>
+          </div>
           <div class="add-to">
             <button
               class="icon-btn"
@@ -912,6 +992,74 @@ function openSource() {
   position: relative;
 }
 
+/* 详细信息面板 */
+.info-wrap {
+  position: relative;
+}
+
+.info-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.info-row {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.info-row .k,
+.info-path .k {
+  flex-shrink: 0;
+  width: 62px;
+  color: var(--text-3);
+}
+
+.info-row .v,
+.info-path .v {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-1);
+  word-break: break-all;
+}
+
+.info-path {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  padding-top: 9px;
+  border-top: 1px dashed var(--stroke);
+  color: var(--text-2);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.info-path:hover {
+  color: var(--text-1);
+}
+
+.info-path .v {
+  color: var(--text-2);
+}
+
+.info-path svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .add-pop {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -1039,6 +1187,12 @@ function openSource() {
 .icon-btn:hover {
   color: var(--text-1);
   background: var(--fill-hover);
+}
+
+.icon-btn.active {
+  color: var(--text-1);
+  background: var(--fill-active);
+  border-color: var(--stroke-strong);
 }
 
 .icon-btn.heart.loved {

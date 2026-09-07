@@ -63,6 +63,7 @@ const PATHS: Record<string, string> = {
   moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
   'panel-left':
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
 };
 
 const svg = computed(() => PATHS[props.name] ?? '');
