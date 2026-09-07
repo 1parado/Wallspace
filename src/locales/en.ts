@@ -13,6 +13,7 @@ export default {
   'collections.addTo': 'Add to collection',
   'collections.noneYet': 'No collections yet — create one',
   'collections.itemCount': '{n} wallpapers',
+  'collections.reorderHint': 'Drag cards to reorder',
   'toast.addedToCollection': 'Added to "{name}"',
   'nav.personal': 'Personal',
   'nav.imports': 'My Imports',

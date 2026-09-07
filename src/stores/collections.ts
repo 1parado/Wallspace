@@ -78,5 +78,12 @@ export const useCollectionsStore = defineStore('collections', {
       c.itemIds = c.itemIds.filter((id) => id !== itemId);
       await this.persist();
     },
+    /** 拖拽排序：用新的 id 顺序整体替换并持久化 */
+    async reorder(collectionId: string, newItemIds: string[]) {
+      const c = this.byId(collectionId);
+      if (!c) return;
+      c.itemIds = newItemIds;
+      await this.persist();
+    },
   },
 });

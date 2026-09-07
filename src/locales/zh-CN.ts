@@ -13,6 +13,7 @@ export default {
   'collections.addTo': '加入集合',
   'collections.noneYet': '还没有集合，先新建一个',
   'collections.itemCount': '{n} 张壁纸',
+  'collections.reorderHint': '拖拽卡片可调整顺序',
   'toast.addedToCollection': '已加入「{name}」',
   'nav.personal': '个人',
   'nav.imports': '我的导入',
