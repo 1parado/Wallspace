@@ -19,6 +19,8 @@ export default {
   'nav.personal': '个人',
   'nav.imports': '我的导入',
   'nav.recent': '最近使用',
+  'nav.expandSidebar': '展开侧边栏',
+  'nav.collapseSidebar': '收起侧边栏',
   'nav.importOwn': '导入图片',
   'nav.footnote': '本地媒体库 · 无需账号',
 

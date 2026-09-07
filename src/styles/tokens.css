@@ -54,6 +54,7 @@
 
   /* 布局 */
   --sidebar-w: 64px;
+  /* 展开模式（html[data-sidebar='wide']）下由下方规则覆盖 */
   --toolbar-h: 56px;
 
   /* 字体 */
@@ -125,4 +126,8 @@
   --btn-primary-fg: #0b0b0d;
   --skeleton-a: rgba(255, 255, 255, 0.03);
   --skeleton-b: rgba(255, 255, 255, 0.07);
+}
+
+html[data-sidebar='wide'] {
+  --sidebar-w: 216px;
 }

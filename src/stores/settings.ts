@@ -21,6 +21,7 @@ export const useSettingsStore = defineStore('settings', {
     theme: 'light',
     sidebarHidden: false,
     classifyModel: '',
+    sidebarExpanded: false,
   }),
   getters: {
     resolvedDark(state): boolean {
@@ -35,8 +36,11 @@ export const useSettingsStore = defineStore('settings', {
       } catch {
         /* 使用默认值 */
       }
+      const saved = localStorage.getItem('wallspace.sidebarExpanded');
+      if (saved != null) this.sidebarExpanded = saved === '1';
       setLocale(this.locale);
       this.applyTheme();
+      this.applySidebar();
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (this.theme === 'system') this.applyTheme();
       });
@@ -52,6 +56,15 @@ export const useSettingsStore = defineStore('settings', {
           state: EffectState.Active,
         })
         .catch(() => {});
+    },
+    /** 同步侧边栏展开模式到根元素（--sidebar-w 由 CSS 变量切换） */
+    applySidebar() {
+      document.documentElement.dataset.sidebar = this.sidebarExpanded ? 'wide' : 'narrow';
+    },
+    toggleSidebarExpanded() {
+      this.sidebarExpanded = !this.sidebarExpanded;
+      localStorage.setItem('wallspace.sidebarExpanded', this.sidebarExpanded ? '1' : '0');
+      this.applySidebar();
     },
     setTheme(mode: ThemeMode) {
       this.theme = mode;

@@ -2,6 +2,7 @@
 import { computed, nextTick, ref } from 'vue';
 import { useUiStore } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
+import { useSettingsStore } from '../../stores/settings';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
 import { buildCategoryTree, matchCategory, type CatNode } from '../../lib/categoryTree';
@@ -11,6 +12,7 @@ import Icon from '../common/Icon.vue';
 const ui = useUiStore();
 const lib = useLibraryStore();
 const collections = useCollectionsStore();
+const settings = useSettingsStore();
 const { t } = useI18n();
 
 const NAV = [
@@ -72,6 +74,21 @@ function goCategory(cat: string) {
   ui.search = '';
 }
 
+// —— 集合右键菜单（窄栏下 hover 按钮难点，右键更稳）——
+const ctxMenu = ref<{ x: number; y: number; id: string } | null>(null);
+
+function openCtx(e: MouseEvent, id: string) {
+  ctxMenu.value = { x: Math.min(e.clientX, window.innerWidth - 150), y: e.clientY, id };
+}
+
+function ctxAction(action: 'rename' | 'delete') {
+  const id = ctxMenu.value?.id;
+  ctxMenu.value = null;
+  if (!id) return;
+  if (action === 'rename') startRename(id);
+  else collections.remove(id);
+}
+
 // —— 集合（用户驱动）——
 const creatingCollection = ref(false);
 const newNameDraft = ref('');
@@ -117,6 +134,12 @@ function openCollection(id: string) {
   ui.search = '';
 }
 
+function onGlobalClick() {
+  ctxMenu.value = null;
+}
+
+window.addEventListener('click', onGlobalClick);
+
 async function importOwn() {
   const picked = await open({
     multiple: true,
@@ -130,10 +153,17 @@ async function importOwn() {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ expanded: settings.sidebarExpanded }">
     <div class="brand">
       <div class="brand-mark"><Icon name="film" :size="16" /></div>
       <span class="brand-name">Wallspace</span>
+      <button
+        class="expand-btn"
+        :title="t(settings.sidebarExpanded ? 'nav.collapseSidebar' : 'nav.expandSidebar')"
+        @click="settings.toggleSidebarExpanded()"
+      >
+        <Icon name="panel-left" :size="15" />
+      </button>
     </div>
 
     <nav class="nav">
@@ -172,7 +202,10 @@ async function importOwn() {
           </button>
           <Icon :name="CATEGORY_ICONS[node.key] ?? 'image'" :size="16" />
           <span class="nav-text">{{ catLabel(node.key) }}</span>
-          <span v-if="node.children.length" class="sub-n">{{ node.children.length }}</span>
+          <span
+            v-if="node.children.length && settings.sidebarExpanded"
+            class="count ghost"
+          >{{ node.children.length }}</span>
         </button>
         <button
           v-for="child in expanded.has(node.key) ? node.children : []"
@@ -221,8 +254,21 @@ async function importOwn() {
           @click="openCollection(c.id)"
         >
           <Icon name="folder" :size="16" />
-          <span class="nav-text coll-name">{{ c.name }}</span>
+          <span
+            class="nav-text coll-name"
+            :title="c.name"
+            @contextmenu.prevent="openCtx($event, c.id)"
+          >{{ c.name }}</span>
+          <span
+            v-if="c.itemIds.length && settings.sidebarExpanded"
+            class="count ghost"
+          >{{ c.itemIds.length }}</span>
           <span class="coll-actions" @click.stop>
+            <button
+              class="mini-act"
+              :title="t('collections.rename')"
+              @contextmenu.prevent.stop="openCtx($event, c.id)"
+            >
             <button class="mini-act" :title="t('collections.rename')" @click="startRename(c.id)">
               <Icon name="pencil" :size="12" />
             </button>
@@ -271,12 +317,26 @@ async function importOwn() {
       <span class="nav-text">{{ t('nav.importOwn') }}</span>
     </button>
     <p class="footnote">{{ t('nav.footnote') }}</p>
+
+    <div
+      v-if="ctxMenu"
+      class="ctx-menu glass"
+      :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
+    >
+      <button @click="ctxAction('rename')">
+        <Icon name="pencil" :size="13" />{{ t('collections.rename') }}
+      </button>
+      <button class="danger" @click="ctxAction('delete')">
+        <Icon name="trash" :size="13" />{{ t('collections.delete') }}
+      </button>
+    </div>
   </aside>
 </template>
 
 <style scoped>
 .sidebar {
   width: var(--sidebar-w);
+  transition: width var(--dur-2) var(--ease-out);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -287,12 +347,139 @@ async function importOwn() {
   -webkit-backdrop-filter: blur(18px) saturate(1.05);
 }
 
+.sidebar.expanded {
+  align-items: stretch;
+}
+
 .brand {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   padding: 4px 0 20px;
+  position: relative;
+}
+
+.expand-btn {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--text-3);
+  transition:
+    background var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.expand-btn:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+/* —— 展开模式：显示文字与角标 —— */
+.sidebar.expanded .nav-item,
+.sidebar.expanded .import-cta {
+  justify-content: flex-start;
+  padding: 8px 10px;
+  gap: 9px;
+}
+
+.sidebar.expanded .nav-text {
+  display: inline;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar.expanded .brand-name {
+  display: inline;
+  font-size: 14px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+}
+
+.sidebar.expanded .section-label {
+  font-size: 11px;
+  text-align: left;
+  padding-left: 10px;
+}
+
+.sidebar.expanded .section-label::before {
+  display: none;
+}
+
+.sidebar.expanded .count {
+  position: static;
+  margin: 0;
+}
+
+.count.ghost {
+  background: transparent;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.twist {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-3);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.twist.open {
+  transform: rotate(0deg);
+}
+
+.twist:not(.open) {
+  transform: rotate(-90deg);
+}
+
+.twist-gap {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.nav-item.child {
+  padding-left: 14px;
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 500;
+  min-width: 140px;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.ctx-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.ctx-menu button:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.ctx-menu button.danger:hover {
+  color: var(--accent-danger, #e5484d);
 }
 
 .brand-mark {
@@ -321,6 +508,7 @@ async function importOwn() {
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: left;
   gap: 9px;
   width: 100%;
   padding: 9px 8px;
