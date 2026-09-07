@@ -5,8 +5,10 @@ import { useCollectionsStore } from '../stores/collections';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
+import { assetUrl } from '../lib/api';
 import WallpaperCard from '../components/wallpaper/WallpaperCard.vue';
 import EmptyState from '../components/common/EmptyState.vue';
+import Icon from '../components/common/Icon.vue';
 
 const ui = useUiStore();
 const lib = useLibraryStore();
@@ -56,16 +58,81 @@ async function onDrop(to: number) {
   ids.splice(toRaw, 0, moved);
   await collections.reorder(collection.value.id, ids);
 }
+
+// —— 管理模式（批量移除） ——
+const managing = ref(false);
+const selectedIds = ref<Set<string>>(new Set());
+
+function toggleSelect(id: string) {
+  const next = new Set(selectedIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  selectedIds.value = next;
+}
+
+function exitManage() {
+  managing.value = false;
+  selectedIds.value = new Set();
+}
+
+async function removeSelected() {
+  if (!collection.value || !selectedIds.value.size) return;
+  for (const id of [...selectedIds.value]) {
+    await collections.removeItem(collection.value.id, id);
+  }
+  selectedIds.value = new Set();
+}
+
+/** 管理模式下点击卡片 = 切换选中，而非打开预览 */
+function onCellClickCapture(id: string, e: MouseEvent) {
+  if (!managing.value) return;
+  e.preventDefault();
+  e.stopPropagation();
+  toggleSelect(id);
+}
+
+// —— 封面与快速应用 ——
+const cover = computed(() => items.value[0] ?? null);
+
+async function quickApply() {
+  const first = items.value[0];
+  if (first && lib.applyingId !== first.id) await lib.apply(first.id);
+}
 </script>
 
 <template>
   <div v-if="collection" class="collection-view">
     <div class="head">
+      <img v-if="cover" class="cover" :src="assetUrl(cover.filePath)" alt="" />
       <h2 class="name">{{ collection.name }}</h2>
       <span class="count-label">
         {{ t('collections.itemCount', { n: items.length }) }}
       </span>
-      <span v-if="items.length > 1" class="hint">{{ t('collections.reorderHint') }}</span>
+      <span v-if="items.length > 1 && !managing" class="hint">{{ t('collections.reorderHint') }}</span>
+      <div class="head-actions">
+        <button
+          v-if="managing && selectedIds.size"
+          class="pill danger"
+          @click="removeSelected"
+        >
+          {{ t('collections.removeSelected', { n: selectedIds.size }) }}
+        </button>
+        <button
+          class="pill"
+          :class="{ active: managing }"
+          :disabled="!items.length"
+          @click="managing ? exitManage() : (managing = true)"
+        >
+          {{ managing ? t('collections.manageDone') : t('collections.manage') }}
+        </button>
+        <button
+          class="pill primary"
+          :disabled="!items.length || lib.applyingId === items[0].id"
+          @click="quickApply"
+        >
+          {{ lib.applyingId === items[0]?.id ? t('preview.applying') : t('collections.quickApply') }}
+        </button>
+      </div>
     </div>
 
     <div v-if="items.length" class="grid">
@@ -76,13 +143,23 @@ async function onDrop(to: number) {
         :class="{
           dragging: dragIndex === i,
           'drop-target': overIndex === i && dragIndex !== null && dragIndex !== i,
+          selectable: managing,
+          selected: managing && selectedIds.has(item.id),
         }"
-        draggable="true"
+        :draggable="!managing"
         @dragstart="onDragStart(i)"
         @dragover.prevent="onDragOver(i)"
         @drop.prevent="onDrop(i)"
         @dragend="onDragEnd"
+        @click.capture="onCellClickCapture(item.id, $event)"
       >
+        <span
+          v-if="managing"
+          class="check"
+          :class="{ on: selectedIds.has(item.id) }"
+        >
+          <Icon v-if="selectedIds.has(item.id)" name="check" :size="12" />
+        </span>
         <WallpaperCard :item="item as WallpaperItem" />
       </div>
     </div>
@@ -108,6 +185,92 @@ async function onDrop(to: number) {
   display: flex;
   align-items: baseline;
   gap: 12px;
+}
+
+.head-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill {
+  font-size: 12.5px;
+  color: var(--text-2);
+  border: 1px solid var(--stroke);
+  border-radius: 100px;
+  padding: 6px 15px;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.pill:hover:not(:disabled) {
+  color: var(--text-1);
+  border-color: var(--stroke-strong);
+}
+
+.pill:disabled {
+  opacity: 0.5;
+}
+
+.pill.active {
+  color: var(--text-1);
+  background: var(--fill-active);
+  border-color: var(--stroke-strong);
+}
+
+.pill.primary {
+  color: #fff;
+  background: var(--accent, #3b82f6);
+  border-color: transparent;
+}
+
+.pill.danger {
+  color: var(--accent-heart);
+  border-color: var(--accent-heart);
+}
+
+.cover {
+  width: 44px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 7px;
+  align-self: center;
+  border: 1px solid var(--stroke);
+}
+
+.cell {
+  position: relative;
+  border-radius: var(--radius-card);
+}
+
+.cell.selectable {
+  cursor: pointer;
+}
+
+.cell.selected {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 3px;
+}
+
+.check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.check.on {
+  background: var(--accent, #3b82f6);
+  border-color: transparent;
 }
 
 .name {
@@ -140,6 +303,7 @@ async function onDrop(to: number) {
 }
 
 .cell {
+  position: relative;
   border-radius: var(--radius-card);
 }
 
