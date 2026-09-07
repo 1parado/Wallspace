@@ -44,6 +44,18 @@ const COLL_SORTS = [
 /** 展示顺序：custom = 集合原始顺序，其余走共享排序工具 */
 const displayed = computed(() => sortItems(items.value, collSort.value, sortSeed.value));
 
+// 网格密度 → CSS 变量（与 WallpaperGrid 一致）
+const DENSITY = {
+  compact: ['200px', '240px'],
+  cozy: ['280px', '340px'],
+  roomy: ['380px', '440px'],
+} as const;
+
+const gridStyle = computed(() => {
+  const [min, minWide] = DENSITY[ui.gridDensity];
+  return { '--grid-min': min, '--grid-min-wide': minWide };
+});
+
 function setCollSort(m: CollSort) {
   // 重复点「随机」= 重新洗牌
   if (m === 'random' && collSort.value === 'random') {
@@ -184,7 +196,7 @@ async function quickApply() {
       @apply="applyRandom"
     />
 
-    <div v-if="displayed.length" class="grid" @click.capture="ui.previewIds = displayed.map((i) => i.id)">
+    <div v-if="displayed.length" class="grid" :style="gridStyle" @click.capture="ui.previewIds = displayed.map((i) => i.id)">
       <div
         v-for="(item, i) in displayed"
         :key="item.id"
@@ -341,13 +353,13 @@ async function quickApply() {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min, 280px), 1fr));
   gap: 18px;
 }
 
 @media (min-width: 1900px) {
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-wide, 340px), 1fr));
   }
 }
 

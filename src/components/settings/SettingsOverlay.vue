@@ -238,6 +238,29 @@ function saveAndClose() {
                 </button>
               </div>
             </div>
+            <div class="appearance-item">
+              <span class="appearance-label">{{ t('settings.gridDensity') }}</span>
+              <div class="segmented">
+                <button
+                  :class="{ active: ui.gridDensity === 'compact' }"
+                  @click="ui.setGridDensity('compact')"
+                >
+                  {{ t('settings.densityCompact') }}
+                </button>
+                <button
+                  :class="{ active: ui.gridDensity === 'cozy' }"
+                  @click="ui.setGridDensity('cozy')"
+                >
+                  {{ t('settings.densityCozy') }}
+                </button>
+                <button
+                  :class="{ active: ui.gridDensity === 'roomy' }"
+                  @click="ui.setGridDensity('roomy')"
+                >
+                  {{ t('settings.densityRoomy') }}
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -450,6 +473,23 @@ function saveAndClose() {
 
         <section>
           <p class="group-label">{{ t('settings.about') }}</p>
+          <div class="appearance-item">
+            <span class="appearance-label">{{ t('settings.autoCheckUpdate') }}</span>
+            <div class="segmented">
+              <button
+                :class="{ active: settings.autoCheckUpdates }"
+                @click="settings.autoCheckUpdates = true"
+              >
+                {{ t('settings.launchOn') }}
+              </button>
+              <button
+                :class="{ active: !settings.autoCheckUpdates }"
+                @click="settings.autoCheckUpdates = false"
+              >
+                {{ t('settings.launchOff') }}
+              </button>
+            </div>
+          </div>
           <div class="appearance-item">
             <span class="appearance-label">{{ t('settings.currentVersion') }}</span>
             <span class="version-text">{{ appVersion ? `v${appVersion}` : '—' }}</span>

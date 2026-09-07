@@ -32,6 +32,18 @@ function readSearchHistory(): string[] {
   }
 }
 
+export type GridDensity = 'compact' | 'cozy' | 'roomy';
+
+function readGridDensity(): GridDensity {
+  try {
+    const v = localStorage.getItem('wallspace.gridDensity');
+    if (v === 'compact' || v === 'cozy' || v === 'roomy') return v;
+  } catch {
+    /* 忽略 */
+  }
+  return 'cozy';
+}
+
 export const useUiStore = defineStore('ui', {
   state: () => ({
     view: 'discover' as ViewId,
@@ -69,6 +81,8 @@ export const useUiStore = defineStore('ui', {
     sortMode: (readSortMode() as SortMode) || 'newest',
     /** 随机排序的洗牌种子：重复点「随机」时更新 */
     sortSeed: 0 as number,
+    /** 网格密度：compact | cozy | roomy */
+    gridDensity: readGridDensity(),
   }),
   actions: {
     /** 设置排序；重复点「随机」时重新洗牌 */
@@ -113,6 +127,15 @@ export const useUiStore = defineStore('ui', {
       this.searchHistory = [];
       try {
         localStorage.removeItem('wallspace.searchHistory');
+      } catch {
+        /* 忽略 */
+      }
+    },
+    /** 设置网格密度（localStorage 持久化） */
+    setGridDensity(d: GridDensity) {
+      this.gridDensity = d;
+      try {
+        localStorage.setItem('wallspace.gridDensity', d);
       } catch {
         /* 忽略 */
       }

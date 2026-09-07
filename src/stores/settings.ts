@@ -34,6 +34,7 @@ export const useSettingsStore = defineStore('settings', {
     globalShortcuts: false,
     autoBackupDays: 0,
     watchFolder: '',
+    autoCheckUpdates: true,
   }),
   getters: {
     resolvedDark(state): boolean {

@@ -64,6 +64,8 @@ export interface Settings {
   autoBackupDays?: number;
   /** 监视文件夹：新图片自动导入媒体库（空 = 关闭） */
   watchFolder?: string | null;
+  /** 启动时自动检查更新（24 小时至多一次） */
+  autoCheckUpdates?: boolean;
   nightStart?: string;
 }
 

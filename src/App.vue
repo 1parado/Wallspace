@@ -20,6 +20,7 @@ import ImportsView from './views/ImportsView.vue';
 import RecentView from './views/RecentView.vue';
 import CollectionView from './views/CollectionView.vue';
 import { useCollectionsStore } from './stores/collections';
+import { checkUpdates } from './lib/api';
 
 const ui = useUiStore();
 const lib = useLibraryStore();
@@ -77,11 +78,32 @@ onMounted(async () => {
   } catch {
     /* 拖放监听失败不影响主流程 */
   }
+
+  maybeCheckUpdates();
 });
 
 onUnmounted(() => {
   unlistenLibrary?.();
 });
+
+// 启动静默检查更新：24 小时至多一次，有新版本才提示
+function maybeCheckUpdates() {
+  if (!settings.autoCheckUpdates) return;
+  const KEY = 'wallspace.lastUpdateCheck';
+  const now = Date.now();
+  try {
+    const last = Number(localStorage.getItem(KEY) || 0);
+    if (now - last < 24 * 3600_000) return;
+    localStorage.setItem(KEY, String(now));
+  } catch {
+    return;
+  }
+  checkUpdates()
+    .then((r) => {
+      if (r.hasUpdate) ui.toast('info', t('settings.newVersion', { v: r.latest }));
+    })
+    .catch(() => {});
+}
 </script>
 
 <template>
