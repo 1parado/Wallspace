@@ -1,4 +1,5 @@
 mod auto_classify;
+mod autoswitch;
 mod collections;
 mod download;
 mod export;
@@ -204,6 +205,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            autoswitch::spawn(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_library,
             import_local_files,

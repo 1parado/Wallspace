@@ -43,6 +43,12 @@ export interface Settings {
   sidebarExpanded: boolean;
   /** 智能打标模型（chat/completions）；空 = 仅关键词规则 */
   classifyModel?: string;
+  /** 定时轮换壁纸：来源集合（null = 关闭） */
+  autoSwitchCollectionId?: string | null;
+  /** 轮换间隔（分钟） */
+  autoSwitchIntervalMin?: number;
+  /** 轮换应用范围 */
+  autoSwitchScope?: 'primary' | 'all';
 }
 
 export interface ImportReport {

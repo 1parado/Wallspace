@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
+import { useCollectionsStore } from '../../stores/collections';
 import { useUiStore } from '../../stores/ui';
 import { testConnection } from '../../lib/api';
 import { useI18n } from '../../lib/i18n';
@@ -8,13 +9,19 @@ import type { ThemeMode } from '../../types';
 import Icon from '../common/Icon.vue';
 
 const settings = useSettingsStore();
+const collections = useCollectionsStore();
 const ui = useUiStore();
 const { t } = useI18n();
 
 const testing = ref(false);
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
 
-onMounted(() => settings.load());
+onMounted(() => {
+  settings.load();
+  collections.load();
+});
+
+const SWITCH_INTERVALS = [1, 5, 10, 15, 30, 60, 120];
 
 async function runTest() {
   testing.value = true;
@@ -135,6 +142,47 @@ function saveAndClose() {
               {{ t('settings.fit') }}
             </button>
           </div>
+        </section>
+
+        <section>
+          <p class="group-label">{{ t('settings.autoSwitch') }}</p>
+          <label class="field">
+            <span>{{ t('settings.autoSwitchSource') }}</span>
+            <select v-model="settings.autoSwitchCollectionId" class="text-field">
+              <option :value="null">{{ t('settings.autoSwitchOff') }}</option>
+              <option v-for="c in collections.collections" :key="c.id" :value="c.id">
+                {{ c.name }}（{{ c.itemIds.length }}）
+              </option>
+            </select>
+          </label>
+          <template v-if="settings.autoSwitchCollectionId">
+            <label class="field">
+              <span>{{ t('settings.autoSwitchInterval') }}</span>
+              <select v-model.number="settings.autoSwitchIntervalMin" class="text-field">
+                <option v-for="m in SWITCH_INTERVALS" :key="m" :value="m">
+                  {{ t('settings.autoSwitchMin', { n: m }) }}
+                </option>
+              </select>
+            </label>
+            <div class="appearance-item">
+              <span class="appearance-label">{{ t('settings.autoSwitchScope') }}</span>
+              <div class="segmented">
+                <button
+                  :class="{ active: settings.autoSwitchScope === 'primary' }"
+                  @click="settings.autoSwitchScope = 'primary'"
+                >
+                  {{ t('settings.scopePrimary') }}
+                </button>
+                <button
+                  :class="{ active: settings.autoSwitchScope === 'all' }"
+                  @click="settings.autoSwitchScope = 'all'"
+                >
+                  {{ t('settings.scopeAll') }}
+                </button>
+              </div>
+            </div>
+          </template>
+          <p class="privacy">{{ t('settings.autoSwitchHint') }}</p>
         </section>
       </div>
 

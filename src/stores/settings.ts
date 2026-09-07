@@ -22,6 +22,9 @@ export const useSettingsStore = defineStore('settings', {
     sidebarHidden: false,
     classifyModel: '',
     sidebarExpanded: false,
+    autoSwitchCollectionId: null,
+    autoSwitchIntervalMin: 30,
+    autoSwitchScope: 'primary' as 'primary' | 'all',
   }),
   getters: {
     resolvedDark(state): boolean {

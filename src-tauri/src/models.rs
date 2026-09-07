@@ -57,6 +57,15 @@ pub struct Settings {
     /// 智能打标用的轻量文本模型（chat/completions）；空 = 仅关键词规则
     #[serde(default)]
     pub classify_model: String,
+    /// 定时轮换壁纸：来源集合 id；空 = 关闭
+    #[serde(default)]
+    pub auto_switch_collection_id: Option<String>,
+    /// 轮换间隔（分钟，最小 1）
+    #[serde(default = "default_switch_interval")]
+    pub auto_switch_interval_min: u32,
+    /// 轮换应用范围："primary" 主屏 | "all" 全部显示器
+    #[serde(default = "default_switch_scope")]
+    pub auto_switch_scope: String,
 }
 
 fn default_locale() -> String {
@@ -65,6 +74,14 @@ fn default_locale() -> String {
 
 fn default_theme() -> String {
     "system".into()
+}
+
+fn default_switch_interval() -> u32 {
+    30
+}
+
+fn default_switch_scope() -> String {
+    "primary".into()
 }
 
 impl Default for Settings {
@@ -79,6 +96,9 @@ impl Default for Settings {
             theme: default_theme(),
             sidebar_hidden: false,
             classify_model: String::new(),
+            auto_switch_collection_id: None,
+            auto_switch_interval_min: default_switch_interval(),
+            auto_switch_scope: default_switch_scope(),
         }
     }
 }
