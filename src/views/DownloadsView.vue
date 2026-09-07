@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useLibraryStore } from '../stores/library';
 import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
 import { wallhavenSearch, type WhThumb } from '../lib/api';
+import { sortItems } from '../lib/sortItems';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
+import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 import Icon from '../components/common/Icon.vue';
 
@@ -87,6 +89,23 @@ async function importWh(w: WhThumb) {
   } finally {
     importingId.value = null;
   }
+}
+
+// —— 本地下载列表：排序 + 随机换一张 ——
+const DL_SORTS = [
+  { id: 'newest', labelKey: 'facets.sortNewest' },
+  { id: 'oldest', labelKey: 'facets.sortOldest' },
+  { id: 'name', labelKey: 'facets.sortName' },
+  { id: 'resolution', labelKey: 'facets.sortResolution' },
+  { id: 'random', labelKey: 'facets.sortRandom' },
+] as const;
+
+const sortedDownloads = computed(() => sortItems(lib.downloads, ui.sortMode, ui.sortSeed));
+
+async function applyRandom() {
+  if (!sortedDownloads.value.length || lib.applyingId) return;
+  const pick = sortedDownloads.value[Math.floor(Math.random() * sortedDownloads.value.length)];
+  await lib.apply(pick.id);
 }
 </script>
 
@@ -189,7 +208,20 @@ async function importWh(w: WhThumb) {
       <span class="badge"><Icon name="globe" :size="12" /> {{ t('downloads.noAccount') }}</span>
     </div>
 
-    <WallpaperGrid v-if="lib.downloads.length" :items="lib.downloads" />
+    <!-- 本地下载列表：排序 + 随机换一张 -->
+    <GridToolbar
+      v-if="lib.downloads.length"
+      :count="lib.downloads.length"
+      :sorts="DL_SORTS"
+      :model-value="ui.sortMode"
+      :seed="ui.sortSeed"
+      :applying="lib.applyingId"
+      @update:model-value="ui.setSort($event as never)"
+      @reshuffle="ui.setSort('random')"
+      @apply="applyRandom"
+    />
+
+    <WallpaperGrid v-if="lib.downloads.length" :items="sortedDownloads" />
     <EmptyState
       v-else
       :title="t('empty.library.title')"

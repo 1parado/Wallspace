@@ -8,6 +8,7 @@ import { useI18n } from '../lib/i18n';
 import { assetUrl } from '../lib/api';
 import { sortItems } from '../lib/sortItems';
 import WallpaperCard from '../components/wallpaper/WallpaperCard.vue';
+import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 import Icon from '../components/common/Icon.vue';
 
@@ -172,28 +173,16 @@ async function quickApply() {
     </div>
 
     <!-- 结果栏：排序 + 随机换一张 -->
-    <div v-if="items.length" class="grid-bar">
-      <span class="facet-label">{{ t('facets.sort') }}</span>
-      <button
-        v-for="s in COLL_SORTS"
-        :key="s.id"
-        class="chip"
-        :class="{ active: collSort === s.id }"
-        @click="setCollSort(s.id)"
-      >
-        {{ t(s.labelKey) }}
-      </button>
-      <span class="bar-spacer" />
-      <button
-        class="chip shuffle-apply"
-        :disabled="!!lib.applyingId || !displayed.length"
-        :title="t('facets.randomApplyTip')"
-        @click="applyRandom"
-      >
-        <Icon name="shuffle" :size="13" />
-        {{ lib.applyingId ? t('preview.applying') : t('facets.randomApply') }}
-      </button>
-    </div>
+    <GridToolbar
+      :count="displayed.length"
+      :sorts="COLL_SORTS"
+      :model-value="collSort"
+      :seed="sortSeed"
+      :applying="lib.applyingId"
+      @update:model-value="setCollSort($event as never)"
+      @reshuffle="setCollSort('random')"
+      @apply="applyRandom"
+    />
 
     <div v-if="displayed.length" class="grid" @click.capture="ui.previewIds = displayed.map((i) => i.id)">
       <div
@@ -348,63 +337,6 @@ async function quickApply() {
   margin-left: auto;
   font-size: 12px;
   color: var(--text-3);
-}
-
-.grid-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.bar-spacer {
-  flex: 1;
-}
-
-.facet-label {
-  font-size: 11.5px;
-  font-weight: 560;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
-  margin-right: 2px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-3);
-  border: 1px solid var(--stroke);
-  border-radius: 100px;
-  padding: 5px 13px;
-  transition: all var(--dur-1) var(--ease-out);
-}
-
-.chip:hover {
-  color: var(--text-1);
-  border-color: var(--stroke-strong);
-}
-
-.chip.active {
-  color: var(--text-1);
-  background: var(--fill-active);
-  border-color: var(--stroke-strong);
-}
-
-.shuffle-apply {
-  color: var(--text-1);
-  background: var(--fill-subtle);
-}
-
-.shuffle-apply:hover:not(:disabled) {
-  background: var(--fill-hover);
-  border-color: var(--stroke-strong);
-}
-
-.shuffle-apply:disabled {
-  opacity: 0.55;
-  cursor: default;
 }
 
 .grid {

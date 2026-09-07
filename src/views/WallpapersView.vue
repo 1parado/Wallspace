@@ -7,6 +7,7 @@ import { useI18n } from '../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import { sortItems } from '../lib/sortItems';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
+import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
 import Icon from '../components/common/Icon.vue';
 
@@ -357,30 +358,17 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
     </div>
 
     <!-- 结果栏：计数 + 排序 + 随机换一张 -->
-    <div v-if="hasAny" class="grid-bar">
-      <span class="result-count">{{ t('facets.resultCount', { n: filtered.length }) }}</span>
-      <span class="bar-spacer" />
-      <span class="facet-label">{{ t('facets.sort') }}</span>
-      <button
-        v-for="s in SORTS"
-        :key="s.id"
-        class="chip"
-        :class="{ active: ui.sortMode === s.id }"
-        @click="ui.setSort(s.id)"
-      >
-        {{ t(s.labelKey) }}
-      </button>
-      <span class="facet-sep" />
-      <button
-        class="chip shuffle-apply"
-        :disabled="!!lib.applyingId || !filtered.length"
-        :title="t('facets.randomApplyTip')"
-        @click="applyRandom"
-      >
-        <Icon name="shuffle" :size="13" />
-        {{ lib.applyingId ? t('preview.applying') : t('facets.randomApply') }}
-      </button>
-    </div>
+    <GridToolbar
+      v-if="hasAny"
+      :count="filtered.length"
+      :sorts="SORTS"
+      :model-value="ui.sortMode"
+      :seed="ui.sortSeed"
+      :applying="lib.applyingId"
+      @update:model-value="ui.setSort($event as never)"
+      @reshuffle="ui.setSort('random')"
+      @apply="applyRandom"
+    />
 
     <WallpaperGrid v-if="filtered.length" :items="sorted" />
 
@@ -554,35 +542,4 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
   color: var(--text-1);
 }
 
-.grid-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.result-count {
-  font-size: 12.5px;
-  color: var(--text-3);
-  margin-right: 6px;
-}
-
-.bar-spacer {
-  flex: 1;
-}
-
-.shuffle-apply {
-  color: var(--text-1);
-  background: var(--fill-subtle);
-}
-
-.shuffle-apply:hover:not(:disabled) {
-  background: var(--fill-hover);
-  border-color: var(--stroke-strong);
-}
-
-.shuffle-apply:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
 </style>
