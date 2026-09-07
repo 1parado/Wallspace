@@ -3,6 +3,7 @@ mod autoswitch;
 mod backup;
 mod collections;
 mod download;
+mod duplicates;
 mod export;
 mod generate;
 mod grok_imagine;
@@ -358,6 +359,12 @@ async fn extract_palette(path: String) -> CmdResult<Vec<String>> {
     .map_err(|e| format!("调色板任务失败: {e}"))?
 }
 
+/// 检测库内重复图片（文件大小分桶 + 内容哈希），后台线程执行。
+#[tauri::command]
+async fn find_duplicates(app: AppHandle) -> CmdResult<Vec<duplicates::DupGroup>> {
+    duplicates::find(app).await
+}
+
 /// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
 #[tauri::command]
 async fn export_wallpaper(
@@ -478,6 +485,7 @@ pub fn run() {
             create_collection,
             reveal_item,
             extract_palette,
+            find_duplicates,
             export_wallpaper,
             wallhaven_search
         ])

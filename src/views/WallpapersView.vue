@@ -9,6 +9,8 @@ import { sortItems } from '../lib/sortItems';
 import { COLOR_FAMILIES, countByFamily, familyOfHex } from '../lib/colorFamily';
 import { guessCategory, suggestTags } from '../lib/autoTag';
 import * as api from '../lib/api';
+import type { DupGroup } from '../lib/api';
+import { assetUrl } from '../lib/api';
 import { useSettingsStore } from '../stores/settings';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import GridToolbar from '../components/common/GridToolbar.vue';
@@ -273,6 +275,50 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
     ? ui.sourceFilter.filter((x) => x !== s)
     : [...ui.sourceFilter, s];
 }
+
+// —— 重复图片检测 ——
+const dupRunning = ref(false);
+const dupGroups = ref<DupGroup[] | null>(null);
+
+function fmtMb(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+const dupWasted = computed(() =>
+  (dupGroups.value ?? []).reduce((sum, g) => sum + (g.ids.length - 1) * g.fileSize, 0)
+);
+
+function groupItems(g: DupGroup) {
+  return g.ids.map((id) => lib.byId(id)).filter((i): i is WallpaperItem => !!i);
+}
+
+async function findDups() {
+  if (dupRunning.value) return;
+  dupRunning.value = true;
+  try {
+    const groups = await api.findDuplicates();
+    dupGroups.value = groups;
+    if (!groups.length) ui.toast('info', t('dup.none'));
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    dupRunning.value = false;
+  }
+}
+
+/** 清理一组重复：保留第一张，其余移入回收站 */
+async function cleanGroup(gi: number) {
+  const g = dupGroups.value?.[gi];
+  if (!g) return;
+  const dupes = g.ids.slice(1);
+  for (const id of dupes) {
+    await lib.remove(id);
+  }
+  dupGroups.value = (dupGroups.value ?? []).filter((_, i) => i !== gi);
+  if (!dupGroups.value.length) dupGroups.value = null;
+  ui.toast('success', t('dup.removed', { n: dupes.length }));
+}
 </script>
 
 <template>
@@ -446,6 +492,15 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
       </button>
     </div>
 
+    <!-- 重复检测：库维护 -->
+    <div v-if="hasAny" class="retag-row">
+      <span class="result-count">{{ t('dup.cta') }}</span>
+      <button class="chip retag-btn" :disabled="dupRunning" @click="findDups">
+        <Icon name="copy" :size="13" />
+        {{ dupRunning ? t('dup.scanning') : t('dup.scan') }}
+      </button>
+    </div>
+
     <!-- 结果栏：计数 + 排序 + 随机换一张 -->
     <GridToolbar
       v-if="hasAny"
@@ -475,6 +530,38 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
       :action-label="t('empty.showAll')"
       @action="ui.resetFacets(); ui.search = ''"
     />
+
+    <!-- 重复检测结果弹窗 -->
+    <div v-if="dupGroups" class="dup-backdrop" @click.self="dupGroups = null">
+      <div class="dup-modal glass">
+        <div class="dup-head">
+          <h3>{{ t('dup.title') }}</h3>
+          <button class="dup-close" @click="dupGroups = null">
+            <Icon name="x" :size="14" />
+          </button>
+        </div>
+        <p class="dup-summary">
+          {{ t('dup.summary', { g: dupGroups.length, mb: fmtMb(dupWasted) }) }}
+        </p>
+        <p v-if="!dupGroups.length" class="dup-empty">{{ t('dup.none') }}</p>
+        <div v-else class="dup-list">
+          <div v-for="(g, gi) in dupGroups" :key="g.ids[0]" class="dup-group">
+            <div class="dup-thumbs">
+              <div v-for="(it, ii) in groupItems(g)" :key="it.id" class="dup-thumb">
+                <img :src="assetUrl(it.filePath)" draggable="false" />
+                <span class="dup-tag" :class="{ keep: ii === 0 }">
+                  {{ ii === 0 ? t('dup.keep') : t('dup.dupe') }}
+                </span>
+              </div>
+            </div>
+            <button class="chip dup-clean" @click="cleanGroup(gi)">
+              {{ t('dup.removeDupes', { n: g.ids.length - 1 }) }}
+              · {{ fmtMb(g.fileSize * (g.ids.length - 1)) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -650,6 +737,138 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
 .retag-btn:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* 重复检测结果 */
+.dup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background: var(--veil);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.dup-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px;
+  border-radius: var(--radius-overlay);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.4);
+}
+
+.dup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dup-head h3 {
+  font-size: 17px;
+  font-weight: 640;
+}
+
+.dup-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text-3);
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.dup-close:hover {
+  color: var(--text-1);
+  background: var(--fill-hover);
+}
+
+.dup-summary {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.dup-empty {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.dup-list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dup-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+}
+
+.dup-thumbs {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dup-thumb {
+  position: relative;
+  width: 74px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--stroke);
+}
+
+.dup-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dup-tag {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-size: 9.5px;
+  color: #fff;
+  background: rgba(15, 15, 18, 0.65);
+  padding: 1px 6px;
+  border-radius: 0 6px 0 0;
+}
+
+.dup-tag.keep {
+  background: rgba(46, 160, 67, 0.85);
+}
+
+.dup-clean {
+  flex-shrink: 0;
+  color: #fff;
+  background: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+.dup-clean:hover {
+  filter: brightness(1.08);
 }
 
 

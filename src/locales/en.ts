@@ -94,6 +94,17 @@ export default {
   'facets.retagDone': 'Done: {n} updated ({c} categorized, {t} tagged)',
   'facets.retagNone': 'Nothing to organize',
 
+  'dup.cta': 'The library may contain duplicate imports',
+  'dup.scan': 'Find duplicates',
+  'dup.scanning': 'Scanning...',
+  'dup.title': 'Duplicate images',
+  'dup.summary': '{g} duplicate groups found, up to {mb} reclaimable',
+  'dup.none': 'No duplicates found',
+  'dup.keep': 'Keep',
+  'dup.dupe': 'Dupe',
+  'dup.removeDupes': 'Remove {n} dupes',
+  'dup.removed': 'Cleaned {n} duplicate images',
+
   'toolbar.allDisplays': 'All Displays',
   'toolbar.display': 'Display',
   'toolbar.search': 'Search wallpapers',

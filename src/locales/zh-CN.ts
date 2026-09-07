@@ -96,6 +96,17 @@ export default {
   'facets.retagDone': '整理完成：{n} 张已更新（补分类 {c}、补标签 {t}）',
   'facets.retagNone': '没有需要整理的内容',
 
+  'dup.cta': '库内可能存在重复导入的图片',
+  'dup.scan': '重复检测',
+  'dup.scanning': '检测中…',
+  'dup.title': '重复图片',
+  'dup.summary': '发现 {g} 组重复，最多可清理 {mb}',
+  'dup.none': '没有发现重复图片',
+  'dup.keep': '保留',
+  'dup.dupe': '重复',
+  'dup.removeDupes': '删除 {n} 张重复',
+  'dup.removed': '已清理 {n} 张重复图片',
+
   'toolbar.allDisplays': '所有显示器',
   'toolbar.display': '显示器',
   'toolbar.search': '搜索壁纸',

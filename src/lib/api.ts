@@ -136,6 +136,18 @@ export async function extractPalette(path: string): Promise<string[]> {
   return invoke('extract_palette', { path });
 }
 
+export interface DupGroup {
+  /** 组内单张文件大小（字节） */
+  fileSize: number;
+  /** 组内条目 id（互为重复） */
+  ids: string[];
+}
+
+/** 检测库内重复图片（文件大小分桶 + 内容哈希） */
+export async function findDuplicates(): Promise<DupGroup[]> {
+  return invoke('find_duplicates');
+}
+
 export async function listCollections(): Promise<Collection[]> {
   return invoke('list_collections');
 }
