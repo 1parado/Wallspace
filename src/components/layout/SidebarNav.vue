@@ -131,9 +131,6 @@ async function importOwn() {
       >
         <Icon :name="n.icon" :size="17" />
         <span class="nav-text">{{ t(n.labelKey) }}</span>
-        <span v-if="n.id === 'favorites' && lib.favorites.length" class="count">
-          {{ lib.favorites.length }}
-        </span>
       </button>
     </nav>
 
@@ -150,7 +147,6 @@ async function importOwn() {
       >
         <Icon :name="(c.key && CATEGORY_ICONS[c.key]) || 'image'" :size="16" />
         <span class="nav-text">{{ catLabel(c.key) }}</span>
-        <span v-if="c.count" class="count">{{ c.count }}</span>
       </button>
     </div>
 
@@ -176,7 +172,6 @@ async function importOwn() {
         >
           <Icon name="folder" :size="16" />
           <span class="nav-text coll-name">{{ c.name }}</span>
-          <span v-if="c.itemIds.length" class="count">{{ c.itemIds.length }}</span>
           <span class="coll-actions" @click.stop>
             <button class="mini-act" :title="t('collections.rename')" @click="startRename(c.id)">
               <Icon name="pencil" :size="12" />
@@ -394,10 +389,6 @@ async function importOwn() {
 
 .nav-item:hover .coll-actions {
   display: inline-flex;
-}
-
-.nav-item:hover .count {
-  display: none;
 }
 
 .mini-act {

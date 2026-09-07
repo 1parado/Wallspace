@@ -106,6 +106,17 @@ async function createAndAdd() {
   if (c && item.value) await collections.addItem(c.id, item.value.id);
 }
 
+async function copyPrompt() {
+  const p = item.value?.prompt;
+  if (!p) return;
+  try {
+    await navigator.clipboard.writeText(p);
+    useUiStore().toast('success', t('toast.promptCopied'));
+  } catch (e) {
+    useUiStore().toast('error', String(e));
+  }
+}
+
 async function openInExplorer() {
   if (item.value) await revealItem(item.value.filePath);
 }
@@ -165,7 +176,12 @@ function openSource() {
               {{ t(`cat.${c.toLowerCase()}`) }}
             </button>
           </div>
-          <p v-if="item.prompt" class="prompt">“{{ item.prompt }}”</p>
+          <div v-if="item.prompt" class="prompt-row">
+            <p class="prompt">“{{ item.prompt }}”</p>
+            <button class="mini-icon" :title="t('preview.copyPrompt')" @click="copyPrompt">
+              <Icon name="copy" :size="13" />
+            </button>
+          </div>
         </div>
 
         <div class="bar-actions">
@@ -506,6 +522,22 @@ function openSource() {
   font-size: 12.5px;
   color: var(--text-3);
   text-align: center;
+}
+
+.prompt-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.prompt-row .prompt {
+  flex: 1;
+  min-width: 0;
+}
+
+.prompt-row .mini-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .icon-btn {

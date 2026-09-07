@@ -29,6 +29,8 @@ const PATHS: Record<string, string> = {
   settings:
     '<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  copy:
+    '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   minus: '<path d="M5 12h14"/>',
   square: '<rect x="4" y="4" width="16" height="16" rx="2"/>',
   restore:
