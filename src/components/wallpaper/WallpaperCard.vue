@@ -53,6 +53,16 @@ const metaLabel = computed(
       <div v-if="failed" class="broken"><Icon name="image" :size="20" /></div>
     </div>
 
+    <!-- 常驻半透明收藏心（右上角，始终可见） -->
+    <button
+      class="round-btn heart persistent"
+      :class="{ loved: item.favorite }"
+      :title="t('preview.favorite')"
+      @click.stop="lib.toggleFavorite(item)"
+    >
+      <Icon name="heart" :size="15" />
+    </button>
+
     <div class="overlay">
       <div class="info">
         <p class="name">{{ item.title }}</p>
@@ -61,14 +71,6 @@ const metaLabel = computed(
       <div class="actions" @click.stop>
         <button class="apply-btn" :disabled="lib.applyingId === item.id" @click="lib.apply(item.id)">
           {{ lib.applyingId === item.id ? t('preview.applying') : t('preview.apply') }}
-        </button>
-        <button
-          class="round-btn heart"
-          :class="{ loved: item.favorite }"
-          :title="t('preview.favorite')"
-          @click="lib.toggleFavorite(item)"
-        >
-          <Icon name="heart" :size="15" />
         </button>
       </div>
     </div>
@@ -139,7 +141,7 @@ const metaLabel = computed(
   color: var(--text-3);
 }
 
-/* 图片上的浮层：两种主题统一用暗色渐变 + 白色控件 */
+/* 图片上的浮层：默认浅渐变 + 标题常显；悬停时加深并展示 meta / 操作 */
 .overlay {
   position: absolute;
   inset: 0;
@@ -150,26 +152,26 @@ const metaLabel = computed(
   gap: 10px;
   background: linear-gradient(
     to top,
-    rgba(5, 5, 7, 0.78) 0%,
-    rgba(5, 5, 7, 0.25) 45%,
-    rgba(5, 5, 7, 0.06) 100%
+    rgba(5, 5, 7, 0.5) 0%,
+    rgba(5, 5, 7, 0.12) 40%,
+    rgba(5, 5, 7, 0) 70%
   );
-  opacity: 0;
-  transition: opacity var(--dur-2) var(--ease-out);
+  transition: background var(--dur-2) var(--ease-out);
 }
 
 .card:hover .overlay,
 .card:focus-visible .overlay {
-  opacity: 1;
+  background: linear-gradient(
+    to top,
+    rgba(5, 5, 7, 0.78) 0%,
+    rgba(5, 5, 7, 0.25) 45%,
+    rgba(5, 5, 7, 0.06) 100%
+  );
 }
 
 .info {
-  transform: translateY(6px);
-  transition: transform var(--dur-2) var(--ease-out);
-}
-
-.card:hover .info {
   transform: translateY(0);
+  transition: transform var(--dur-2) var(--ease-out);
 }
 
 .name {
@@ -189,12 +191,35 @@ const metaLabel = computed(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.card:hover .meta,
+.card:focus-visible .meta {
+  opacity: 1;
 }
 
 .actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.card:hover .actions,
+.card:focus-visible .actions {
+  opacity: 1;
+}
+
+/* 常驻收藏心：右上角，半透明可见 */
+.heart.persistent {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  opacity: 0.85;
 }
 
 .apply-btn {

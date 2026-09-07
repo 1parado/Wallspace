@@ -51,6 +51,10 @@ async function doDelete() {
 
 function onKey(e: KeyboardEvent) {
   if (ui.previewId == null) return;
+  const target = e.target as HTMLElement | null;
+  const typing =
+    !!target &&
+    (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
   if (e.key === 'Escape') {
     if (addToOpen.value) {
       addToOpen.value = false;
@@ -61,7 +65,24 @@ function onKey(e: KeyboardEvent) {
       return;
     }
     ui.previewId = null;
-  } else if (e.key.toLowerCase() === 'f' && !editingTitle.value) {
+    return;
+  }
+  if (typing || editingTitle.value) return;
+  // ←/→ 在当前库顺序内切换预览
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const items = lib.items;
+    const idx = items.findIndex((i) => i.id === ui.previewId);
+    if (idx === -1) return;
+    const next = idx + (e.key === 'ArrowRight' ? 1 : -1);
+    if (next >= 0 && next < items.length) ui.previewId = items[next].id;
+    return;
+  }
+  // A 应用壁纸
+  if (e.key.toLowerCase() === 'a') {
+    if (item.value && lib.applyingId !== item.value.id) lib.apply(item.value.id);
+    return;
+  }
+  if (e.key.toLowerCase() === 'f') {
     toggleFav();
   }
 }
@@ -348,7 +369,12 @@ function openSource() {
           >
             <Icon name="sparkles" :size="16" />
           </button>
-          <button class="btn-primary apply" :disabled="lib.applyingId === item.id" @click="lib.apply(item.id)">
+          <button
+            class="btn-primary apply"
+            :disabled="lib.applyingId === item.id"
+            :title="t('preview.apply') + ' (A)'"
+            @click="lib.apply(item.id)"
+          >
             {{ lib.applyingId === item.id ? t('preview.applying') : t('preview.apply') }}
           </button>
         </div>
