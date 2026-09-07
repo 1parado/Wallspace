@@ -22,7 +22,8 @@ fn title_from_url(url: &str) -> String {
 pub async fn import_from_url(
     app: AppHandle,
     url: String,
-    category: String,
+    category: Option<String>,
+    tags: Vec<String>,
 ) -> CmdResult<WallpaperItem> {
     let url = url.trim().to_string();
     if !(url.starts_with("http://") || url.starts_with("https://")) {
@@ -74,11 +75,12 @@ pub async fn import_from_url(
         bytes.to_vec(),
         "url",
         title,
-        &category,
+        category,
         ExtraMeta {
             prompt: None,
             model: None,
             origin_url: Some(url),
+            tags,
         },
     )
 }

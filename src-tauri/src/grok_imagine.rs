@@ -531,7 +531,8 @@ pub async fn generate(
     prompt: String,
     model: String,
     aspect_ratio: String,
-    category: String,
+    category: Option<String>,
+    tags: Vec<String>,
 ) -> CmdResult<WallpaperItem> {
     let prompt = prompt.trim().to_string();
     if prompt.is_empty() {
@@ -572,11 +573,12 @@ pub async fn generate(
                         bytes,
                         "ai",
                         short_title(&prompt),
-                        &category,
+                        category,
                         ExtraMeta {
                             prompt: Some(prompt),
                             model: Some(model),
                             origin_url: None,
+                            tags,
                         },
                     );
                 }

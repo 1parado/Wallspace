@@ -6,8 +6,11 @@ export interface WallpaperItem {
   width: number;
   height: number;
   fileSize: number;
-  category: string;
+  /** 可空分类；「自动」模式下由 tags + palette 承担归类 */
+  category?: string;
   tags: string[];
+  /** 主色调色板（hex，最多 5 色，按占比排序），用于按颜色过滤 */
+  palette?: string[];
   favorite: boolean;
   prompt?: string;
   model?: string;

@@ -23,7 +23,8 @@ pub async fn generate(
     app: AppHandle,
     prompt: String,
     size: String,
-    category: String,
+    category: Option<String>,
+    tags: Vec<String>,
 ) -> CmdResult<WallpaperItem> {
     let cfg = settings::load(&app);
     if cfg.api_key.trim().is_empty() {
@@ -120,11 +121,12 @@ pub async fn generate(
         bytes,
         "ai",
         title,
-        &category,
+        category,
         ExtraMeta {
             prompt: Some(prompt),
             model: Some(cfg.api_model.clone()),
             origin_url: None,
+            tags,
         },
     )
 }

@@ -114,7 +114,7 @@ function openSource() {
           />
           <p class="meta">
             <button class="cat" :class="{ editing: editCategory }" @click="editCategory = !editCategory">
-              {{ t(`cat.${item.category.toLowerCase()}`) }}
+              {{ item.category ? t(`cat.${item.category.toLowerCase()}`) : t('cat.uncategorized') }}
             </button>
             <span class="dot">·</span>
             <span>{{ item.width }}×{{ item.height }}</span>

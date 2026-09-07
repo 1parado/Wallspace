@@ -25,7 +25,7 @@ const sizeLabel = computed(() => {
 });
 const metaLabel = computed(
   () =>
-    `${t(`cat.${props.item.category.toLowerCase()}`)} · ${props.item.width}×${props.item.height} · ${sizeLabel.value}`
+    `${props.item.category ? t(`cat.${props.item.category.toLowerCase()}`) : t('cat.uncategorized')} · ${props.item.width}×${props.item.height} · ${sizeLabel.value}`
 );
 </script>
 

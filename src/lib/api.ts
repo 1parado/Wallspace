@@ -11,24 +11,27 @@ export async function getLibrary(): Promise<WallpaperItem[]> {
 
 export async function importLocalFiles(
   paths: string[],
-  category: string
+  category: string | null,
+  tags: string[] = []
 ): Promise<ImportReport> {
-  return invoke('import_local_files', { paths, category });
+  return invoke('import_local_files', { paths, category, tags });
 }
 
 export async function importFromUrl(
   url: string,
-  category: string
+  category: string | null,
+  tags: string[] = []
 ): Promise<WallpaperItem> {
-  return invoke('import_from_url', { url, category });
+  return invoke('import_from_url', { url, category, tags });
 }
 
 export async function generateWallpaper(
   prompt: string,
   size: string,
-  category: string
+  category: string | null,
+  tags: string[] = []
 ): Promise<WallpaperItem> {
-  return invoke('generate_wallpaper', { prompt, size, category });
+  return invoke('generate_wallpaper', { prompt, size, category, tags });
 }
 
 export interface GrokImagineStatus {
@@ -41,9 +44,10 @@ export async function grokImagine(
   prompt: string,
   model: string,
   aspectRatio: string,
-  category: string
+  category: string | null,
+  tags: string[] = []
 ): Promise<WallpaperItem> {
-  return invoke('grok_imagine', { prompt, model, aspectRatio, category });
+  return invoke('grok_imagine', { prompt, model, aspectRatio, category, tags });
 }
 
 export async function grokImagineStatus(): Promise<GrokImagineStatus> {

@@ -10,8 +10,14 @@ pub struct WallpaperItem {
     pub width: u32,
     pub height: u32,
     pub file_size: u64,
-    pub category: String,
+    /// 可空分类；「自动」模式下由 tags + palette 承担归类
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
     pub tags: Vec<String>,
+    /// 主色调色板（hex，最多 5 色，按占比排序），用于按颜色过滤
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub palette: Option<Vec<String>>,
     pub favorite: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,

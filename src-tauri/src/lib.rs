@@ -27,18 +27,20 @@ fn get_library(app: AppHandle) -> CmdResult<Vec<WallpaperItem>> {
 fn import_local_files(
     app: AppHandle,
     paths: Vec<String>,
-    category: String,
+    category: Option<String>,
+    tags: Option<Vec<String>>,
 ) -> CmdResult<ImportReport> {
-    library::import_local_files(&app, paths, &category)
+    library::import_local_files(&app, paths, category, tags.unwrap_or_default())
 }
 
 #[tauri::command]
 async fn import_from_url(
     app: AppHandle,
     url: String,
-    category: String,
+    category: Option<String>,
+    tags: Option<Vec<String>>,
 ) -> CmdResult<WallpaperItem> {
-    download::import_from_url(app, url, category).await
+    download::import_from_url(app, url, category, tags.unwrap_or_default()).await
 }
 
 #[tauri::command]
@@ -46,9 +48,10 @@ async fn generate_wallpaper(
     app: AppHandle,
     prompt: String,
     size: String,
-    category: String,
+    category: Option<String>,
+    tags: Option<Vec<String>>,
 ) -> CmdResult<WallpaperItem> {
-    generate::generate(app, prompt, size, category).await
+    generate::generate(app, prompt, size, category, tags.unwrap_or_default()).await
 }
 
 #[tauri::command]
@@ -101,9 +104,10 @@ async fn grok_imagine(
     prompt: String,
     model: String,
     aspect_ratio: String,
-    category: String,
+    category: Option<String>,
+    tags: Option<Vec<String>>,
 ) -> CmdResult<WallpaperItem> {
-    grok_imagine::generate(&app, prompt, model, aspect_ratio, category).await
+    grok_imagine::generate(&app, prompt, model, aspect_ratio, category, tags.unwrap_or_default()).await
 }
 
 #[tauri::command]

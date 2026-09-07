@@ -73,13 +73,62 @@ fn dimensions_of(bytes: &[u8]) -> CmdResult<(u32, u32)> {
         .map_err(|e| format!("读取图片尺寸失败: {e}"))
 }
 
+/// 主色提取：降采样 + RGB 量化分桶，取占比最高且互相足够远的前 5 色（hex）。
+pub fn extract_palette(bytes: &[u8]) -> Option<Vec<String>> {
+    use std::collections::HashMap;
+    let img = image::load_from_memory(bytes).ok()?;
+    let small = img
+        .resize_exact(48, 48, image::imageops::FilterType::Triangle)
+        .to_rgb8();
+    // 5bit/通道（32 级）分桶太碎，用 3bit（8 级）聚合
+    let mut buckets: HashMap<[u8; 3], (u64, u64, u64, u64)> = HashMap::new();
+    for px in small.pixels() {
+        let key = [px[0] >> 5, px[1] >> 5, px[2] >> 5];
+        let e = buckets.entry(key).or_insert((0, 0, 0, 0));
+        e.0 += 1;
+        e.1 += px[0] as u64;
+        e.2 += px[1] as u64;
+        e.3 += px[2] as u64;
+    }
+    let mut ranked: Vec<(u64, [u8; 3])> = buckets
+        .into_iter()
+        .map(|(_, (n, r, g, b))| (n, [(r / n) as u8, (g / n) as u8, (b / n) as u8]))
+        .collect();
+    ranked.sort_by(|a, b| b.0.cmp(&a.0));
+
+    let mut out: Vec<[u8; 3]> = Vec::new();
+    for (_, rgb) in ranked {
+        // 与已选颜色距离过近的视为同色
+        if out.iter().all(|c| dist(c, &rgb) >= 60 * 60) {
+            out.push(rgb);
+            if out.len() >= 5 {
+                break;
+            }
+        }
+    }
+    if out.is_empty() {
+        return None;
+    }
+    Some(
+        out.iter()
+            .map(|c| format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2]))
+            .collect(),
+    )
+}
+
+fn dist(a: &[u8; 3], b: &[u8; 3]) -> u32 {
+    let d = |x: u8, y: u8| (x as i32 - y as i32).pow(2) as u32;
+    d(a[0], b[0]) + d(a[1], b[1]) + d(a[2], b[2])
+}
+
 /// 将图片字节落盘并写入元数据，返回新条目。
+/// category 为 None 表示「自动」；tags 为智能打标结果；palette 自动提取。
 pub fn add_image_bytes(
     app: &AppHandle,
     bytes: Vec<u8>,
     source: &str,
     title: String,
-    category: &str,
+    category: Option<String>,
     extra: ExtraMeta,
 ) -> CmdResult<WallpaperItem> {
     let ext = sniff_image_ext(&bytes).ok_or_else(|| "不支持的图片格式".to_string())?;
@@ -91,6 +140,7 @@ pub fn add_image_bytes(
     let dest = root.join("wallpapers").join(&file_name);
     fs::write(&dest, &bytes).map_err(|e| format!("写入文件失败: {e}"))?;
 
+    let palette = extract_palette(&bytes);
     let item = WallpaperItem {
         id,
         title,
@@ -99,8 +149,9 @@ pub fn add_image_bytes(
         width: w,
         height: h,
         file_size: bytes.len() as u64,
-        category: if category.is_empty() { "Minimal".into() } else { category.into() },
-        tags: Vec::new(),
+        category: category.filter(|c| !c.trim().is_empty()),
+        tags: extra.tags,
+        palette,
         favorite: false,
         prompt: extra.prompt,
         model: extra.model,
@@ -120,13 +171,16 @@ pub struct ExtraMeta {
     pub prompt: Option<String>,
     pub model: Option<String>,
     pub origin_url: Option<String>,
+    /// 智能打标 / 用户选择产生的标签
+    pub tags: Vec<String>,
 }
 
-/// 导入本地图片文件（复制进 wallpapers/ 目录）。
+/// 导入本地图片文件（复制进 wallpapers/ 目录）。category 传 None 走「自动」。
 pub fn import_local_files(
     app: &AppHandle,
     paths_in: Vec<String>,
-    category: &str,
+    category: Option<String>,
+    tags: Vec<String>,
 ) -> CmdResult<ImportReport> {
     let mut imported = Vec::new();
     let mut failed = Vec::new();
@@ -138,7 +192,17 @@ pub fn import_local_files(
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_else(|| "Imported".into());
-                match add_image_bytes(app, bytes, "local", title, category, ExtraMeta::default()) {
+                match add_image_bytes(
+                    app,
+                    bytes,
+                    "local",
+                    title,
+                    category.clone(),
+                    ExtraMeta {
+                        tags: tags.clone(),
+                        ..Default::default()
+                    },
+                ) {
                     Ok(item) => imported.push(item),
                     Err(e) => failed.push(FailedImport { path: p, reason: e }),
                 }

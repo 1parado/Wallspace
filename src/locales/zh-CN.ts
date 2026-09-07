@@ -15,6 +15,7 @@ export default {
   'cat.space': '太空',
   'cat.abstract': '抽象',
   'cat.cinematic': '电影感',
+  'cat.uncategorized': '未分类',
   'cat.minimal': '极简',
 
   'toolbar.allDisplays': '所有显示器',

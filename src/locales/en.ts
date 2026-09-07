@@ -15,6 +15,7 @@ export default {
   'cat.space': 'Space',
   'cat.abstract': 'Abstract',
   'cat.cinematic': 'Cinematic',
+  'cat.uncategorized': 'Uncategorized',
   'cat.minimal': 'Minimal',
 
   'toolbar.allDisplays': 'All Displays',

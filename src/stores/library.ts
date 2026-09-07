@@ -48,12 +48,12 @@ export const useLibraryStore = defineStore('library', {
         this.loaded = true;
       }
     },
-    async generate(prompt: string, size: string, category: string) {
+    async generate(prompt: string, size: string, category: string | null, tags: string[] = []) {
       const ui = useUiStore();
       const { t } = useI18n();
       this.generating = true;
       try {
-        const item = await api.generateWallpaper(prompt, size, category);
+        const item = await api.generateWallpaper(prompt, size, category, tags);
         this.items.unshift(item);
         ui.toast('success', t('toast.generated'));
         return item;
@@ -64,12 +64,12 @@ export const useLibraryStore = defineStore('library', {
         this.generating = false;
       }
     },
-    async generateGrok(prompt: string, model: string, aspectRatio: string, category: string) {
+    async generateGrok(prompt: string, model: string, aspectRatio: string, category: string | null, tags: string[] = []) {
       const ui = useUiStore();
       const { t } = useI18n();
       this.generating = true;
       try {
-        const item = await api.grokImagine(prompt, model, aspectRatio, category);
+        const item = await api.grokImagine(prompt, model, aspectRatio, category, tags);
         this.items.unshift(item);
         ui.toast('success', t('toast.generated'));
         return item;
@@ -80,12 +80,12 @@ export const useLibraryStore = defineStore('library', {
         this.generating = false;
       }
     },
-    async importUrl(url: string, category: string) {
+    async importUrl(url: string, category: string | null = null, tags: string[] = []) {
       const ui = useUiStore();
       const { t } = useI18n();
       this.importingUrl = true;
       try {
-        const item = await api.importFromUrl(url, category);
+        const item = await api.importFromUrl(url, category, tags);
         this.items.unshift(item);
         ui.toast('success', t('toast.downloaded'));
         return item;
@@ -96,13 +96,13 @@ export const useLibraryStore = defineStore('library', {
         this.importingUrl = false;
       }
     },
-    async importFiles(paths: string[], category = 'Minimal') {
+    async importFiles(paths: string[], category: string | null = null, tags: string[] = []) {
       const ui = useUiStore();
       const { t } = useI18n();
       if (!paths.length) return;
       this.importingFiles = true;
       try {
-        const report = await api.importLocalFiles(paths, category);
+        const report = await api.importLocalFiles(paths, category, tags);
         this.items.unshift(...report.imported);
         if (report.imported.length) {
           ui.toast('success', t('toast.importedN', { n: report.imported.length }));

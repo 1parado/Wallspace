@@ -13,14 +13,14 @@ const { t } = useI18n();
 const filtered = computed(() => {
   let items = lib.items;
   if (ui.categoryFilter) {
-    items = items.filter((i) => i.category === ui.categoryFilter);
+    items = items.filter((i) => (i.category ?? null) === ui.categoryFilter);
   }
   const q = ui.search.trim().toLowerCase();
   if (q) {
     items = items.filter(
       (i) =>
         i.title.toLowerCase().includes(q) ||
-        i.category.toLowerCase().includes(q) ||
+        (i.category ?? '').toLowerCase().includes(q) ||
         (i.prompt ?? '').toLowerCase().includes(q)
     );
   }
