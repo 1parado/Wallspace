@@ -6,6 +6,7 @@ import { useUiStore } from '../stores/ui';
 import { useI18n } from '../lib/i18n';
 import { buildCategoryTree, matchCategory, displayCategory, type CatNode } from '../lib/categoryTree';
 import { sortItems } from '../lib/sortItems';
+import { COLOR_FAMILIES, countByFamily, familyOfHex } from '../lib/colorFamily';
 import { guessCategory, suggestTags } from '../lib/autoTag';
 import * as api from '../lib/api';
 import { useSettingsStore } from '../stores/settings';
@@ -71,17 +72,14 @@ const topTags = computed(() =>
 
 const hiddenTagCount = computed(() => Math.max(0, allTags.value.length - TAG_PREVIEW));
 
-/** 颜色 facet：聚合所有调色板，按占比取前 8 */
-const paletteColors = computed(() => {
-  const counts = new Map<string, number>();
-  for (const i of lib.items) {
-    for (const c of i.palette ?? []) counts.set(c, (counts.get(c) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([hex, count]) => ({ hex, count }));
-});
+/** 颜色 facet：把调色板归入 12 个感知色系，只显示库内有内容的色系 */
+const familyCounts = computed(() => countByFamily(lib.items));
+
+const activeFamilies = computed(() =>
+  COLOR_FAMILIES.filter((f) => (familyCounts.value.get(f.id) ?? 0) > 0)
+);
+
+const familyCount = (id: string) => familyCounts.value.get(id) ?? 0;
 
 const sourceCount = (s: string) => lib.items.filter((i) => i.source === s).length;
 
@@ -99,7 +97,9 @@ const filtered = computed(() => {
     items = items.filter((i) => ratioOf(i) === ui.ratioFilter);
   }
   if (ui.colorFilter) {
-    items = items.filter((i) => i.palette?.includes(ui.colorFilter!));
+    items = items.filter((i) =>
+      (i.palette ?? []).some((c) => familyOfHex(c) === ui.colorFilter)
+    );
   }
   if (ui.tagFilter.length) {
     items =
@@ -262,7 +262,7 @@ const activeChips = computed<FilterChip[]>(() => {
   if (ui.colorFilter)
     chips.push({
       key: 'color',
-      label: ui.colorFilter.toUpperCase(),
+      label: t(`facets.family.${ui.colorFilter}`),
       clear: () => (ui.colorFilter = null),
     });
   return chips;
@@ -414,17 +414,17 @@ function toggleSource(s: 'ai' | 'url' | 'local') {
           <span class="chip-count">{{ ratioCount(r) }}</span>
         </button>
 
-        <template v-if="paletteColors.length">
+        <template v-if="activeFamilies.length">
           <span class="facet-sep" />
           <span class="facet-label">{{ t('facets.color') }}</span>
           <button
-            v-for="c in paletteColors"
-            :key="c.hex"
+            v-for="f in activeFamilies"
+            :key="f.id"
             class="swatch"
-            :class="{ active: ui.colorFilter === c.hex }"
-            :style="{ background: c.hex }"
-            :title="`${c.hex} · ${c.count}`"
-            @click="ui.colorFilter = ui.colorFilter === c.hex ? null : c.hex"
+            :class="{ active: ui.colorFilter === f.id }"
+            :style="{ background: f.hex }"
+            :title="`${t(f.labelKey)} · ${familyCount(f.id)}`"
+            @click="ui.colorFilter = ui.colorFilter === f.id ? null : f.id"
           />
         </template>
 
