@@ -154,6 +154,7 @@ async fn export_wallpaper(
     add_to_library: Option<bool>,
     save_path: Option<String>,
     title: Option<String>,
+    format: Option<String>,
 ) -> CmdResult<export::ExportResult> {
     let item = library::load(&app)
         .into_iter()
@@ -171,6 +172,7 @@ async fn export_wallpaper(
             add_to_library.unwrap_or(false),
             save_path,
             title,
+            format.as_deref().unwrap_or("jpg"),
         )
     })
     .await

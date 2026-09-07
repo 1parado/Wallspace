@@ -110,7 +110,7 @@ export interface ExportResult {
   item: WallpaperItem | null;
 }
 
-/** 按预设尺寸裁剪导出：mode 'cover'（带取景偏移）| 'fit' */
+/** 按预设尺寸裁剪导出：mode 'cover'（带取景偏移）| 'fit'；format 'jpg' | 'png'（png 的 fit 模式四边透明） */
 export async function exportWallpaper(params: {
   id: string;
   width: number;
@@ -121,6 +121,7 @@ export async function exportWallpaper(params: {
   addToLibrary?: boolean;
   savePath?: string;
   title?: string;
+  format?: 'jpg' | 'png';
 }): Promise<ExportResult> {
   return invoke('export_wallpaper', {
     id: params.id,
@@ -132,5 +133,6 @@ export async function exportWallpaper(params: {
     addToLibrary: params.addToLibrary ?? false,
     savePath: params.savePath ?? null,
     title: params.title ?? null,
+    format: params.format ?? 'jpg',
   });
 }

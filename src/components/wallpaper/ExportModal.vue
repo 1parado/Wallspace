@@ -63,6 +63,27 @@ const presetId = ref('desktop');
 const mode = ref<'cover' | 'fit'>('cover');
 const offset = ref({ x: 0.5, y: 0.5 });
 const busy = ref(false);
+const exportFormat = ref<'jpg' | 'png'>('jpg');
+
+// 记住上次导出设置（预设 / 模式 / 格式）
+const LAST_EXPORT_KEY = 'wallspace.lastExport';
+try {
+  const last = JSON.parse(localStorage.getItem(LAST_EXPORT_KEY) ?? 'null');
+  if (last && typeof last === 'object') {
+    if (ALL_PRESETS.some((p) => p.id === last.presetId)) presetId.value = last.presetId;
+    if (last.mode === 'fit') mode.value = 'fit';
+    if (last.format === 'png') exportFormat.value = 'png';
+  }
+} catch {
+  /* 忽略损坏的历史记录 */
+}
+
+function rememberLast() {
+  localStorage.setItem(
+    LAST_EXPORT_KEY,
+    JSON.stringify({ presetId: presetId.value, mode: mode.value, format: exportFormat.value })
+  );
+}
 
 const preset = computed(() => ALL_PRESETS.find((p) => p.id === presetId.value)!);
 const ratioStyle = computed(() => ({ aspectRatio: `${preset.value.w} / ${preset.value.h}` }));
@@ -117,7 +138,9 @@ function onPointerUp() {
   dragStart = null;
 }
 
-const fileName = computed(() => `${props.item.title}_${preset.value.w}x${preset.value.h}.jpg`);
+const fileName = computed(
+  () => `${props.item.title}_${preset.value.w}x${preset.value.h}.${exportFormat.value}`
+);
 
 async function addToLibrary() {
   if (busy.value) return;
@@ -131,7 +154,9 @@ async function addToLibrary() {
       offsetX: offset.value.x,
       offsetY: offset.value.y,
       addToLibrary: true,
+      format: exportFormat.value,
     });
+    rememberLast();
     await lib.refresh();
     ui.toast('success', t('export.toast.added'));
     emit('exported');
@@ -148,7 +173,12 @@ async function saveAs() {
   const dest = await save({
     title: t('export.saveTitle'),
     defaultPath: fileName.value,
-    filters: [{ name: 'JPEG', extensions: ['jpg'] }],
+    filters: [
+      {
+        name: exportFormat.value === 'png' ? 'PNG' : 'JPEG',
+        extensions: [exportFormat.value],
+      },
+    ],
   });
   if (!dest) return;
   busy.value = true;
@@ -161,7 +191,9 @@ async function saveAs() {
       offsetX: offset.value.x,
       offsetY: offset.value.y,
       savePath: dest,
+      format: exportFormat.value,
     });
+    rememberLast();
     ui.toast('success', t('export.toast.saved'));
     emit('close');
   } catch (e) {
@@ -268,6 +300,16 @@ async function exportPack() {
             </button>
             <button :class="{ active: mode === 'fit' }" @click="mode = 'fit'">
               {{ t('export.modeFit') }}
+            </button>
+          </div>
+
+          <p class="label">{{ t('export.format') }}</p>
+          <div class="segmented">
+            <button :class="{ active: exportFormat === 'jpg' }" @click="exportFormat = 'jpg'">
+              {{ t('export.fmtJpg') }}
+            </button>
+            <button :class="{ active: exportFormat === 'png' }" @click="exportFormat = 'png'">
+              {{ t('export.fmtPng') }}
             </button>
           </div>
         </div>
