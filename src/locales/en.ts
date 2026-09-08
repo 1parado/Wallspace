@@ -104,6 +104,8 @@ export default {
   'dup.dupe': 'Dupe',
   'dup.removeDupes': 'Remove {n} dupes',
   'dup.removed': 'Cleaned {n} duplicate images',
+  'dup.cleanAll': 'Clean all',
+  'dup.removedAll': 'Cleaned {n} images',
   'sim.scan': 'Find similar',
   'sim.strict': 'Strict',
   'sim.normal': 'Normal',

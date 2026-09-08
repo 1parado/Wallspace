@@ -106,6 +106,8 @@ export default {
   'dup.dupe': '重复',
   'dup.removeDupes': '删除 {n} 张重复',
   'dup.removed': '已清理 {n} 张重复图片',
+  'dup.cleanAll': '全部清理',
+  'dup.removedAll': '已清理 {n} 张图片',
   'sim.scan': '相似检测',
   'sim.strict': '严格',
   'sim.normal': '标准',

@@ -342,6 +342,21 @@ async function cleanGroup(gi: number) {
   if (!dupGroups.value.length) dupGroups.value = null;
   ui.toast('success', t('dup.removed', { n: dupes.length }));
 }
+
+/** 全部清理：每组保留第一张，其余全部移入回收站 */
+async function cleanAllGroups() {
+  const groups = dupGroups.value ?? [];
+  if (!groups.length) return;
+  let n = 0;
+  for (const g of groups) {
+    for (const id of g.ids.slice(1)) {
+      await lib.remove(id);
+      n++;
+    }
+  }
+  dupGroups.value = null;
+  ui.toast('success', t('dup.removedAll', { n }));
+}
 </script>
 
 <template>
@@ -568,9 +583,18 @@ async function cleanGroup(gi: number) {
       <div class="dup-modal glass">
         <div class="dup-head">
           <h3>{{ scanKind === 'dup' ? t('dup.title') : t('sim.title') }}</h3>
-          <button class="dup-close" @click="dupGroups = null">
-            <Icon name="x" :size="14" />
-          </button>
+          <div class="dup-head-actions">
+            <button
+              v-if="dupGroups.length"
+              class="chip dup-clean"
+              @click="cleanAllGroups"
+            >
+              {{ t('dup.cleanAll') }}
+            </button>
+            <button class="dup-close" @click="dupGroups = null">
+              <Icon name="x" :size="14" />
+            </button>
+          </div>
         </div>
         <p class="dup-summary">
           {{
@@ -807,6 +831,12 @@ async function cleanGroup(gi: number) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.dup-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dup-head h3 {
