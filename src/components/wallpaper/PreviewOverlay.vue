@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { useUiStore, CATEGORIES } from '../../stores/ui';
 import { useLibraryStore } from '../../stores/library';
 import { useCollectionsStore } from '../../stores/collections';
 import { useI18n } from '../../lib/i18n';
-import { assetUrl, revealItem, extractPalette } from '../../lib/api';
+import { revealItem, extractPalette, readBinaryFile } from '../../lib/api';
 import { buildCategoryTree, displayCategory, type CatNode } from '../../lib/categoryTree';
 import ExportModal from './ExportModal.vue';
 import ShareCardModal from '../common/ShareCardModal.vue';
@@ -34,21 +34,57 @@ function goNext() {
   if (hasNext.value) ui.previewId = navIds.value[navIdx.value + 1];
 }
 
-// —— 缩放与平移（滚轮缩放 / 拖拽平移 / 双击切换 / +−0 快捷键） ——
+// —— 缩放与平移（canvas 渲染：只绘制可见源区域，超大图缩放不再产生整层内存峰值） ——
 const stageEl = ref<HTMLElement | null>(null);
-const imgEl = ref<HTMLImageElement | null>(null);
+const cvEl = ref<HTMLCanvasElement | null>(null);
+const bmp = shallowRef<ImageBitmap | null>(null);
+const bmpFailed = ref(false);
 const zoom = ref(1);
 const panX = ref(0);
 const panY = ref(0);
 const dragging = ref(false);
+const stageW = ref(0);
+const stageH = ref(0);
+let stageRo: ResizeObserver | null = null;
+
+const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+
+/** 读取并解码壁纸为 ImageBitmap（二进制通道，不走 asset 协议）；切换图片时带上令牌防串图 */
+let bmpToken = 0;
+async function loadBitmap(path?: string) {
+  const token = ++bmpToken;
+  bmp.value?.close();
+  bmp.value = null;
+  bmpFailed.value = false;
+  if (!path) return;
+  try {
+    const buf = await readBinaryFile(path);
+    const b = await createImageBitmap(new Blob([buf]));
+    if (token !== bmpToken) {
+      b.close();
+      return;
+    }
+    bmp.value = b;
+    scheduleDraw();
+  } catch {
+    if (token === bmpToken) bmpFailed.value = true;
+  }
+}
+
+watch(() => item.value?.filePath, (p) => void loadBitmap(p), { immediate: true });
+
+const fitScale = computed(() => {
+  if (!bmp.value || !stageW.value || !stageH.value) return 1;
+  // 与旧 <img> max-width/max-height 行为一致：小图不放大
+  return Math.min(stageW.value / bmp.value.width, stageH.value / bmp.value.height, 1);
+});
+const drawnW = computed(() => (bmp.value ? bmp.value.width * fitScale.value * zoom.value : 0));
+const drawnH = computed(() => (bmp.value ? bmp.value.height * fitScale.value * zoom.value : 0));
 
 /** 将平移量限制在「放大后图片超出舞台的范围」内，避免拖飞 */
 function clampPan() {
-  const stage = stageEl.value?.getBoundingClientRect();
-  const img = imgEl.value?.getBoundingClientRect();
-  if (!stage || !img) return;
-  const lx = Math.max(0, (img.width - stage.width) / 2);
-  const ly = Math.max(0, (img.height - stage.height) / 2);
+  const lx = Math.max(0, (drawnW.value - stageW.value) / 2);
+  const ly = Math.max(0, (drawnH.value - stageH.value) / 2);
   panX.value = Math.min(lx, Math.max(-lx, panX.value));
   panY.value = Math.min(ly, Math.max(-ly, panY.value));
 }
@@ -70,7 +106,8 @@ function applyZoom(next: number, cx = 0, cy = 0) {
   panX.value = cx * (1 - z / old) + panX.value * (z / old);
   panY.value = cy * (1 - z / old) + panY.value * (z / old);
   zoom.value = z;
-  void nextTick(clampPan);
+  clampPan();
+  scheduleDraw();
 }
 
 function onWheel(e: WheelEvent) {
@@ -116,10 +153,82 @@ function resetZoom() {
   applyZoom(1);
 }
 
-const imgStyle = computed(() => ({
-  transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+const cvStyle = computed(() => ({
   cursor: zoom.value > 1 ? (dragging.value ? 'grabbing' : 'grab') : 'zoom-in',
 }));
+
+// —— 绘制：只在 rAF 帧里重画；放大时按可见窗口映射源矩形，避免整图光栅化 ——
+let rafId = 0;
+
+function scheduleDraw() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = 0;
+    draw();
+  });
+}
+
+function draw() {
+  const cv = cvEl.value;
+  if (!cv || !stageW.value || !stageH.value) return;
+  const dpr = DPR();
+  const bw = Math.max(1, Math.round(stageW.value * dpr));
+  const bh = Math.max(1, Math.round(stageH.value * dpr));
+  if (cv.width !== bw || cv.height !== bh) {
+    cv.width = bw;
+    cv.height = bh;
+  }
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, stageW.value, stageH.value);
+  const b = bmp.value;
+  const dw = drawnW.value;
+  const dh = drawnH.value;
+  if (!b || bmpFailed.value || dw < 1 || dh < 1) return;
+  const dx = (stageW.value - dw) / 2 + panX.value;
+  const dy = (stageH.value - dh) / 2 + panY.value;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (dw <= stageW.value && dh <= stageH.value) {
+    ctx.drawImage(b, dx, dy, dw, dh);
+  } else {
+    const x0 = Math.max(0, dx);
+    const y0 = Math.max(0, dy);
+    const x1 = Math.min(stageW.value, dx + dw);
+    const y1 = Math.min(stageH.value, dy + dh);
+    if (x1 <= x0 || y1 <= y0) return;
+    const sx = ((x0 - dx) / dw) * b.width;
+    const sy = ((y0 - dy) / dh) * b.height;
+    const sw = ((x1 - x0) / dw) * b.width;
+    const sh = ((y1 - y0) / dh) * b.height;
+    ctx.drawImage(b, sx, sy, sw, sh, x0, y0, x1 - x0, y1 - y0);
+  }
+}
+
+watch([bmp, zoom, panX, panY, stageW, stageH], scheduleDraw);
+
+onMounted(() => {
+  window.addEventListener('keydown', onKey);
+  if (stageEl.value && 'ResizeObserver' in window) {
+    stageRo = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (!r) return;
+      stageW.value = r.width;
+      stageH.value = r.height;
+      scheduleDraw();
+    });
+    stageRo.observe(stageEl.value);
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey);
+  stageRo?.disconnect();
+  stageRo = null;
+  bmp.value?.close();
+  bmp.value = null;
+});
 
 // 切换图片 / 关闭预览时重置缩放状态
 watch(
@@ -228,9 +337,6 @@ function onKey(e: KeyboardEvent) {
     applyZoom(1);
   }
 }
-
-onMounted(() => window.addEventListener('keydown', onKey));
-onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 const sourceLabel = computed(() => {
   if (!item.value) return '';
@@ -428,18 +534,20 @@ function openSource() {
       </button>
 
       <div ref="stageEl" class="stage" @wheel.prevent="onWheel">
-        <img
-          ref="imgEl"
-          :src="assetUrl(item.filePath)"
-          draggable="false"
+        <canvas
+          ref="cvEl"
+          class="stage-canvas"
           :class="{ dragging }"
-          :style="imgStyle"
+          :style="cvStyle"
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
           @pointerup="onPointerUp"
           @pointercancel="onPointerUp"
           @dblclick="onDblClick"
         />
+        <div v-if="bmpFailed" class="stage-broken">
+          <Icon name="image" :size="28" />
+        </div>
 
         <!-- 上一张 / 下一张（点击或 ←/→） -->
         <button
@@ -819,17 +927,20 @@ function openSource() {
   pointer-events: none;
 }
 
-.stage img {
-  max-width: 100%;
-  max-height: min(72vh, 780px);
-  object-fit: contain;
-  transition: transform 0.16s var(--ease-out);
-  will-change: transform;
+.stage-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
   user-select: none;
+  touch-action: none;
 }
 
-.stage img.dragging {
-  transition: none;
+.stage-broken {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
 }
 
 /* 缩放比例指示（点击重置） */

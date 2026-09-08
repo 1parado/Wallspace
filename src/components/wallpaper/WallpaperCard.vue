@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { WallpaperItem } from '../../types';
 import { assetUrl } from '../../lib/api';
 import { useLibraryStore } from '../../stores/library';
@@ -19,6 +19,37 @@ const { t } = useI18n();
 const loaded = ref(false);
 const failed = ref(false);
 
+// —— 缩略图按需加载：进入视口（含 800px 预载余量）前不设置 src，
+//    避免大库时一次性请求/解码大量高分辨率原图 ——
+const rootEl = ref<HTMLElement | null>(null);
+const nearViewport = ref(false);
+let thumbIo: IntersectionObserver | null = null;
+
+onMounted(() => {
+  if (!('IntersectionObserver' in window)) {
+    nearViewport.value = true;
+    return;
+  }
+  thumbIo = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        nearViewport.value = true;
+        thumbIo?.disconnect();
+        thumbIo = null;
+      }
+    },
+    { rootMargin: '800px 0px' }
+  );
+  if (rootEl.value) thumbIo.observe(rootEl.value);
+});
+
+onBeforeUnmount(() => {
+  thumbIo?.disconnect();
+  thumbIo = null;
+});
+
+const src = computed(() => (nearViewport.value ? assetUrl(props.item.filePath) : undefined));
+
 const ratio = computed(() => (props.featured ? '21/9' : '16/9'));
 const sizeLabel = computed(() => {
   const mb = props.item.fileSize / (1024 * 1024);
@@ -32,6 +63,7 @@ const metaLabel = computed(
 
 <template>
   <div
+    ref="rootEl"
     class="card"
     :class="{ featured }"
     role="button"
@@ -42,10 +74,11 @@ const metaLabel = computed(
     <div class="thumb" :style="{ aspectRatio: ratio }">
       <div v-if="!loaded && !failed" class="skeleton" />
       <img
-        v-if="!failed"
-        :src="assetUrl(item.filePath)"
+        v-if="src"
+        :src="src"
         :class="{ visible: loaded }"
         loading="lazy"
+        decoding="async"
         draggable="false"
         @load="loaded = true"
         @error="failed = true"

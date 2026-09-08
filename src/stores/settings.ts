@@ -35,7 +35,6 @@ export const useSettingsStore = defineStore('settings', {
     autoBackupDays: 0,
     watchFolder: '',
     watchFolders: [] as string[],
-    autoCheckUpdates: true,
   }),
   getters: {
     resolvedDark(state): boolean {

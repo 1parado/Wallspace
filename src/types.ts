@@ -66,8 +66,6 @@ export interface Settings {
   watchFolder?: string | null;
   /** 监视文件夹（多目录），非空时优先于 watchFolder */
   watchFolders?: string[];
-  /** 启动时自动检查更新（24 小时至多一次） */
-  autoCheckUpdates?: boolean;
   nightStart?: string;
 }
 

@@ -484,23 +484,6 @@ function saveAndClose() {
         <section>
           <p class="group-label">{{ t('settings.about') }}</p>
           <div class="appearance-item">
-            <span class="appearance-label">{{ t('settings.autoCheckUpdate') }}</span>
-            <div class="segmented">
-              <button
-                :class="{ active: settings.autoCheckUpdates }"
-                @click="settings.autoCheckUpdates = true"
-              >
-                {{ t('settings.launchOn') }}
-              </button>
-              <button
-                :class="{ active: !settings.autoCheckUpdates }"
-                @click="settings.autoCheckUpdates = false"
-              >
-                {{ t('settings.launchOff') }}
-              </button>
-            </div>
-          </div>
-          <div class="appearance-item">
             <span class="appearance-label">{{ t('settings.currentVersion') }}</span>
             <span class="version-text">{{ appVersion ? `v${appVersion}` : '—' }}</span>
           </div>
