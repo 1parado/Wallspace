@@ -48,14 +48,30 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
   return t + '…';
 }
 
+/** 卡片规格：竖版 / 横版 / 方形 */
+export type ShareKind = 'portrait' | 'landscape' | 'square';
+
+const SHARE_SIZES: Record<ShareKind, [number, number]> = {
+  portrait: [1080, 1620],
+  landscape: [1620, 1080],
+  square: [1440, 1440],
+};
+
 /** 合成分享卡并返回画布；由调用方负责 toBlob / 展示 */
-export async function renderShareCard(item: WallpaperItem): Promise<HTMLCanvasElement> {
+export async function renderShareCard(
+  item: WallpaperItem,
+  kind: ShareKind = 'portrait'
+): Promise<HTMLCanvasElement> {
   const buf = await api.readBinaryFile(item.filePath);
   const blob = new Blob([buf]);
   const bmp = await createImageBitmap(blob);
 
-  const W = 1080;
-  const H = 1620;
+  const [W, H] = SHARE_SIZES[kind];
+  // 底部文案区高度随画布等比缩放
+  const textH = Math.round(H * 0.145);
+  const titleSize = Math.round(46 * (H / 1620));
+  const dateSize = Math.round(30 * (H / 1620));
+  const brandSize = Math.round(22 * (H / 1620));
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -76,12 +92,12 @@ export async function renderShareCard(item: WallpaperItem): Promise<HTMLCanvasEl
   // 主图：contain 居中 + 圆角裁切 + 微光描边
   const pad = 72;
   const maxW = W - pad * 2;
-  const maxH = H - pad * 2 - 240;
+  const maxH = H - pad * 2 - textH;
   const scale = Math.min(maxW / bmp.width, maxH / bmp.height);
   const dw = bmp.width * scale;
   const dh = bmp.height * scale;
   const dx = (W - dw) / 2;
-  const dy = pad + (maxH - dh) / 2 - 40;
+  const dy = pad + (maxH - dh) / 2;
   ctx.save();
   roundRectPath(ctx, dx, dy, dw, dh, 28);
   ctx.clip();
@@ -95,16 +111,16 @@ export async function renderShareCard(item: WallpaperItem): Promise<HTMLCanvasEl
   // 文案区：日期 / 标题 / 署名
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.font = `600 30px ${FONT}`;
-  ctx.fillText(new Date().toLocaleDateString(), W / 2, H - 168);
+  ctx.font = `600 ${dateSize}px ${FONT}`;
+  ctx.fillText(new Date().toLocaleDateString(), W / 2, H - textH + textH * 0.3);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = `600 46px ${FONT}`;
-  ctx.fillText(truncate(ctx, item.title, W - pad * 2), W / 2, H - 102);
+  ctx.font = `600 ${titleSize}px ${FONT}`;
+  ctx.fillText(truncate(ctx, item.title, W - pad * 2), W / 2, H - textH + textH * 0.64);
 
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.font = `400 22px ${FONT}`;
-  ctx.fillText('Wallspace', W / 2, H - 52);
+  ctx.font = `400 ${brandSize}px ${FONT}`;
+  ctx.fillText('Wallspace', W / 2, H - textH * 0.16);
 
   bmp.close();
   return canvas;

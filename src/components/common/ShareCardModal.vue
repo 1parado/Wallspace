@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue';
 import type { WallpaperItem } from '../../types';
 import * as api from '../../lib/api';
-import { renderShareCard, canvasToPng, canvasToJpeg } from '../../lib/shareCard';
+import { renderShareCard, canvasToPng, canvasToJpeg, type ShareKind } from '../../lib/shareCard';
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { useUiStore } from '../../stores/ui';
 import { useI18n } from '../../lib/i18n';
@@ -23,28 +23,58 @@ const { t } = useI18n();
 const busy = ref(false);
 const saving = ref(false);
 const url = ref('');
+const kind = ref<ShareKind>('portrait');
 let canvasEl: HTMLCanvasElement | null = null;
+let renderToken = 0;
+
+const KINDS: { id: ShareKind; labelKey: string }[] = [
+  { id: 'portrait', labelKey: 'share.portrait' },
+  { id: 'landscape', labelKey: 'share.landscape' },
+  { id: 'square', labelKey: 'share.square' },
+];
+
+async function render() {
+  if (!props.item) return;
+  const token = ++renderToken;
+  busy.value = true;
+  try {
+    const canvas = await renderShareCard(props.item, kind.value);
+    const newUrl = URL.createObjectURL(await canvasToPng(canvas));
+    if (token !== renderToken) {
+      URL.revokeObjectURL(newUrl);
+      return;
+    }
+    if (url.value) URL.revokeObjectURL(url.value);
+    canvasEl = canvas;
+    url.value = newUrl;
+  } catch (e) {
+    if (token === renderToken) {
+      ui.toast('error', String(e));
+      emit('close');
+    }
+  } finally {
+    if (token === renderToken) busy.value = false;
+  }
+}
+
+function setKind(k: ShareKind) {
+  if (kind.value === k) return;
+  kind.value = k;
+  if (props.open) void render();
+}
 
 watch(
   () => props.open,
-  async (open) => {
-    if (open && props.item) {
-      busy.value = true;
-      try {
-        canvasEl = await renderShareCard(props.item);
-        url.value = URL.createObjectURL(await canvasToPng(canvasEl));
-      } catch (e) {
-        ui.toast('error', String(e));
-        emit('close');
-      } finally {
-        busy.value = false;
-      }
-    } else if (!open) {
+  (open) => {
+    if (open) void render();
+    else {
       if (url.value) {
         URL.revokeObjectURL(url.value);
         url.value = '';
       }
       canvasEl = null;
+      renderToken++;
+      busy.value = false;
     }
   }
 );
@@ -92,6 +122,17 @@ async function saveShare() {
         <h3>{{ t('share.title') }}</h3>
         <button class="share-close" @click="emit('close')">
           <Icon name="x" :size="14" />
+        </button>
+      </div>
+      <div class="share-kinds">
+        <button
+          v-for="k in KINDS"
+          :key="k.id"
+          :class="{ active: kind === k.id }"
+          :disabled="busy"
+          @click="setKind(k.id)"
+        >
+          {{ t(k.labelKey) }}
         </button>
       </div>
       <div class="share-preview">
@@ -160,6 +201,26 @@ async function saveShare() {
 .share-close:hover {
   color: var(--text-1);
   background: var(--fill-hover);
+}
+
+.share-kinds {
+  display: flex;
+  border: 1px solid var(--stroke);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.share-kinds button {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 0;
+  color: var(--text-3);
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.share-kinds button.active {
+  color: var(--text-1);
+  background: var(--fill-active);
 }
 
 .share-preview {
