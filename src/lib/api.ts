@@ -168,6 +168,11 @@ export async function saveBinaryFile(path: string, bytes: Uint8Array): Promise<v
   return invoke('save_binary_file', { path, bytes: Array.from(bytes) });
 }
 
+/** 导出媒体库为离线 HTML 画廊，返回拷贝的图片数 */
+export async function exportGallery(dir: string): Promise<number> {
+  return invoke('export_gallery', { dir });
+}
+
 export async function listCollections(): Promise<Collection[]> {
   return invoke('list_collections');
 }

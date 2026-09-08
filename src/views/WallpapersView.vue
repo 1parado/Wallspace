@@ -9,7 +9,8 @@ import { sortItems } from '../lib/sortItems';
 import { COLOR_FAMILIES, countByFamily, familyOfHex } from '../lib/colorFamily';
 import { guessCategory, suggestTags } from '../lib/autoTag';
 import * as api from '../lib/api';
-import { assetUrl } from '../lib/api';import { useSettingsStore } from '../stores/settings';
+import { assetUrl } from '../lib/api';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';import { useSettingsStore } from '../stores/settings';
 import WallpaperGrid from '../components/wallpaper/WallpaperGrid.vue';
 import GridToolbar from '../components/common/GridToolbar.vue';
 import EmptyState from '../components/common/EmptyState.vue';
@@ -357,6 +358,24 @@ async function cleanAllGroups() {
   dupGroups.value = null;
   ui.toast('success', t('dup.removedAll', { n }));
 }
+
+// —— 导出离线 HTML 画廊 ——
+const galleryBusy = ref(false);
+
+async function exportHtmlGallery() {
+  if (galleryBusy.value) return;
+  const dir = await openDialog({ directory: true, title: t('gallery.pick') });
+  if (typeof dir !== 'string' || !dir) return;
+  galleryBusy.value = true;
+  try {
+    const n = await api.exportGallery(dir);
+    ui.toast('success', t('gallery.done', { n }));
+  } catch (e) {
+    ui.toast('error', String(e));
+  } finally {
+    galleryBusy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -546,6 +565,11 @@ async function cleanAllGroups() {
         <option :value="8">{{ t('sim.normal') }}</option>
         <option :value="14">{{ t('sim.loose') }}</option>
       </select>
+      <span class="facet-sep" />
+      <button class="chip retag-btn" :disabled="galleryBusy" @click="exportHtmlGallery">
+        <Icon name="external" :size="13" />
+        {{ galleryBusy ? t('gallery.working') : t('gallery.scan') }}
+      </button>
     </div>
 
     <!-- 结果栏：计数 + 排序 + 随机换一张 -->

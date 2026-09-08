@@ -5,6 +5,7 @@ mod collections;
 mod download;
 mod duplicates;
 mod export;
+mod gallery;
 mod generate;
 mod grok_imagine;
 mod library;
@@ -385,6 +386,12 @@ fn save_binary_file(path: String, bytes: Vec<u8>) -> CmdResult<()> {
     std::fs::write(&path, bytes).map_err(|e| format!("写入文件失败: {e}"))
 }
 
+/// 导出媒体库为离线 HTML 画廊（图片拷贝 + 单文件 index.html）。
+#[tauri::command]
+async fn export_gallery(app: AppHandle, dir: String) -> CmdResult<u32> {
+    gallery::export(app, dir).await
+}
+
 /// 按预设尺寸裁剪导出：加入媒体库或另存为指定路径。
 #[tauri::command]
 async fn export_wallpaper(
@@ -509,6 +516,7 @@ pub fn run() {
             find_similar,
             read_binary_file,
             save_binary_file,
+            export_gallery,
             export_wallpaper,
             wallhaven_search
         ])
