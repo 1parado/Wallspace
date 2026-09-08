@@ -57,14 +57,25 @@ const SHARE_SIZES: Record<ShareKind, [number, number]> = {
   square: [1440, 1440],
 };
 
+export interface ShareTexts {
+  /** 覆盖标题（空串 = 用壁纸原标题） */
+  title?: string;
+  /** 覆盖署名（空串 = 用 Wallspace） */
+  brand?: string;
+}
+
 /** 合成分享卡并返回画布；由调用方负责 toBlob / 展示 */
 export async function renderShareCard(
   item: WallpaperItem,
-  kind: ShareKind = 'portrait'
+  kind: ShareKind = 'portrait',
+  texts: ShareTexts = {}
 ): Promise<HTMLCanvasElement> {
   const buf = await api.readBinaryFile(item.filePath);
   const blob = new Blob([buf]);
   const bmp = await createImageBitmap(blob);
+
+  const title = texts.title?.trim() || item.title;
+  const brand = texts.brand?.trim() || 'Wallspace';
 
   const [W, H] = SHARE_SIZES[kind];
   // 底部文案区高度随画布等比缩放
@@ -116,11 +127,11 @@ export async function renderShareCard(
 
   ctx.fillStyle = '#ffffff';
   ctx.font = `600 ${titleSize}px ${FONT}`;
-  ctx.fillText(truncate(ctx, item.title, W - pad * 2), W / 2, H - textH + textH * 0.64);
+  ctx.fillText(truncate(ctx, title, W - pad * 2), W / 2, H - textH + textH * 0.64);
 
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.font = `400 ${brandSize}px ${FONT}`;
-  ctx.fillText('Wallspace', W / 2, H - textH * 0.16);
+  ctx.fillText(brand, W / 2, H - textH * 0.16);
 
   bmp.close();
   return canvas;

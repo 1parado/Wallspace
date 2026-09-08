@@ -157,6 +157,8 @@ export default {
   'share.portrait': '竖版',
   'share.landscape': '横版',
   'share.square': '方形',
+  'share.phTitle': '自定义标题（留空用原名）',
+  'share.phBrand': '自定义署名',
   'hero.dailyApply': '设为今日壁纸',
   'hero.dailyOpen': '查看大图',
   'hero.fresh': '最新场景',

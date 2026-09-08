@@ -155,6 +155,8 @@ export default {
   'share.portrait': 'Portrait',
   'share.landscape': 'Landscape',
   'share.square': 'Square',
+  'share.phTitle': 'Custom title (empty = original)',
+  'share.phBrand': 'Custom byline',
   'hero.dailyApply': 'Set as today’s wallpaper',
   'hero.dailyOpen': 'View full size',
   'hero.fresh': 'Fresh scenes',

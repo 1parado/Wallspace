@@ -8,6 +8,8 @@ import { useUiStore } from '../../stores/ui';
 import { useI18n } from '../../lib/i18n';
 import Icon from './Icon.vue';
 
+const BRAND_KEY = 'wallspace.shareBrand';
+
 const props = defineProps<{
   /** 要生成分享卡的条目 */
   item: WallpaperItem | null;
@@ -24,8 +26,11 @@ const busy = ref(false);
 const saving = ref(false);
 const url = ref('');
 const kind = ref<ShareKind>('portrait');
+const titleDraft = ref('');
+const brandDraft = ref(localStorage.getItem(BRAND_KEY) ?? '');
 let canvasEl: HTMLCanvasElement | null = null;
 let renderToken = 0;
+let textTimer: ReturnType<typeof setTimeout> | null = null;
 
 const KINDS: { id: ShareKind; labelKey: string }[] = [
   { id: 'portrait', labelKey: 'share.portrait' },
@@ -38,7 +43,10 @@ async function render() {
   const token = ++renderToken;
   busy.value = true;
   try {
-    const canvas = await renderShareCard(props.item, kind.value);
+    const canvas = await renderShareCard(props.item, kind.value, {
+      title: titleDraft.value,
+      brand: brandDraft.value,
+    });
     const newUrl = URL.createObjectURL(await canvasToPng(canvas));
     if (token !== renderToken) {
       URL.revokeObjectURL(newUrl);
@@ -62,6 +70,16 @@ function setKind(k: ShareKind) {
   kind.value = k;
   if (props.open) void render();
 }
+
+// 文案输入防抖重渲染；署名持久化
+watch([titleDraft, brandDraft], () => {
+  if (!props.open) return;
+  localStorage.setItem(BRAND_KEY, brandDraft.value);
+  if (textTimer) clearTimeout(textTimer);
+  textTimer = setTimeout(() => {
+    if (props.open) void render();
+  }, 400);
+});
 
 watch(
   () => props.open,
@@ -134,6 +152,22 @@ async function saveShare() {
         >
           {{ t(k.labelKey) }}
         </button>
+      </div>
+      <div class="share-texts">
+        <input
+          v-model="titleDraft"
+          class="text-field"
+          :placeholder="t('share.phTitle')"
+          maxlength="60"
+          spellcheck="false"
+        />
+        <input
+          v-model="brandDraft"
+          class="text-field"
+          :placeholder="t('share.phBrand')"
+          maxlength="30"
+          spellcheck="false"
+        />
       </div>
       <div class="share-preview">
         <span v-if="busy || !url" class="share-busy">{{ t('share.rendering') }}</span>
@@ -221,6 +255,16 @@ async function saveShare() {
 .share-kinds button.active {
   color: var(--text-1);
   background: var(--fill-active);
+}
+
+.share-texts {
+  display: flex;
+  gap: 8px;
+}
+
+.share-texts .text-field {
+  flex: 1;
+  min-width: 0;
 }
 
 .share-preview {
