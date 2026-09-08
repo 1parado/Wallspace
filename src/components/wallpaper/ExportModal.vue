@@ -39,6 +39,9 @@ const GENERAL_PRESETS: Preset[] = [
   { id: 'social', labelKey: 'export.preset.social', w: 1080, h: 1350, group: 'general' },
   { id: 'phone', labelKey: 'export.preset.phone', w: 1080, h: 1920, group: 'general' },
   { id: 'desktop', labelKey: 'export.preset.desktop', w: 1920, h: 1080, group: 'general' },
+  { id: 'desktop2k', labelKey: 'export.preset.desktop2k', w: 2560, h: 1440, group: 'general' },
+  { id: 'desktop4k', labelKey: 'export.preset.desktop4k', w: 3840, h: 2160, group: 'general' },
+  { id: 'ultrawide', labelKey: 'export.preset.ultrawide', w: 3440, h: 1440, group: 'general' },
   { id: 'tablet', labelKey: 'export.preset.tablet', w: 1024, h: 768, group: 'general' },
 ];
 
